@@ -27,6 +27,7 @@ import {
 import { OrderActions } from "./order-actions";
 import { DeliveryRowActions } from "./delivery-row-actions";
 import { PaymentRowActions } from "./payment-row-actions";
+import { NotifyTutorButton } from "./notify-tutor-button";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
       `
       *,
       customers(id, name, phone),
+      pets(id, name, weight_kg),
       addresses(id, label, street, number, complement, neighborhood, city, state),
       order_items(
         id, quantity, measure_type, measure_unit, unit_price, unit_cost, line_total, line_cost,
@@ -65,7 +67,17 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
   const payments = o.payments ?? [];
   const items = o.order_items ?? [];
   const customer = o.customers;
+  const pet = o.pets;
   const address = o.addresses;
+
+  // Texto pra montar a mensagem de WhatsApp
+  const itemsForMessage = items.map((it: any) => {
+    const label = it.recipe_sizes
+      ? `${it.recipe_sizes.recipes.name} · ${it.recipe_sizes.size_label}`
+      : it.combos?.name ?? "—";
+    return `• ${it.quantity}× ${label}`;
+  });
+  const firstScheduled = deliveries[0];
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -75,9 +87,28 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
         </Link>
       </Button>
       <PageHeader
-        title={`Pedido de ${customer?.name ?? "—"}`}
+        title={pet ? `Pedido — ${customer?.name ?? "—"} (🐾 ${pet.name})` : `Pedido de ${customer?.name ?? "—"}`}
         description={`${recurrenceLabel(o.recurrence)} · ${pricingStrategyLabel(o.pricing_strategy)} · ${statusLabel(o.status)}`}
-        actions={<OrderActions orderId={o.id} status={o.status} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <NotifyTutorButton
+              tutorName={customer?.name ?? "Cliente"}
+              tutorPhone={customer?.phone ?? null}
+              petName={pet?.name ?? null}
+              orderTotal={Number(o.total_price)}
+              itemLines={itemsForMessage}
+              nextDeliveryDate={firstScheduled?.scheduled_date ?? null}
+              nextDeliveryTime={firstScheduled?.scheduled_time ?? null}
+              nextDeliveryType={firstScheduled?.delivery_type ?? null}
+              addressSummary={
+                address
+                  ? `${address.street}${address.number ? `, ${address.number}` : ""}`
+                  : null
+              }
+            />
+            <OrderActions orderId={o.id} status={o.status} />
+          </div>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-3">

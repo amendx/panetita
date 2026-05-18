@@ -42,6 +42,7 @@ export interface NewPaymentInput {
 
 export interface NewOrderInput {
   customer_id: string;
+  pet_id: string | null;
   address_id: string | null;
   recurrence: Recurrence;
   pricing_strategy: PricingStrategy;
@@ -73,6 +74,7 @@ export async function createOrder(input: NewOrderInput) {
       .insert({
         user_id: userId,
         customer_id: input.customer_id,
+        pet_id: input.pet_id,
         address_id: input.address_id,
         recurrence: input.recurrence,
         pricing_strategy: input.pricing_strategy,

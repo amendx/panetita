@@ -117,6 +117,7 @@ export interface Order {
   id: string;
   user_id: string;
   customer_id: string;
+  pet_id: string | null;
   address_id: string | null;
   recurrence: Recurrence;
   pricing_strategy: PricingStrategy;

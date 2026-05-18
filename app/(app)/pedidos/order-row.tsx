@@ -14,6 +14,7 @@ import {
 export function OrderRow({
   id,
   customerName,
+  petName,
   nextDate,
   deliveryType,
   recurrence,
@@ -23,6 +24,7 @@ export function OrderRow({
 }: {
   id: string;
   customerName: string;
+  petName: string | null;
   nextDate: string | null;
   deliveryType: string | null;
   recurrence: string;
@@ -36,7 +38,12 @@ export function OrderRow({
       className="cursor-pointer transition-colors hover:bg-muted/60"
       onClick={() => router.push(`/pedidos/${id}`)}
     >
-      <TableCell className="font-medium">{customerName}</TableCell>
+      <TableCell>
+        <div className="font-medium">{customerName}</div>
+        {petName && (
+          <div className="text-xs text-muted-foreground">🐾 {petName}</div>
+        )}
+      </TableCell>
       <TableCell className="hidden text-sm sm:table-cell">
         {nextDate ? formatDate(nextDate) : <span className="text-muted-foreground">—</span>}
       </TableCell>

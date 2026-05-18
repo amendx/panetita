@@ -10,7 +10,7 @@ export default async function CalendarioPage() {
     .from("deliveries")
     .select(
       `id, scheduled_date, scheduled_time, status,
-       orders(id, customers(name)),
+       orders(id, customers(name), pets(name)),
        delivery_items(quantity, order_items(measure_unit, recipe_sizes(size_label, recipes(name)), combos(name)))`
     )
     .order("scheduled_date");
@@ -18,6 +18,8 @@ export default async function CalendarioPage() {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const events = (deliveries ?? []).map((d: any) => {
     const customerName = d.orders?.customers?.name ?? "Cliente";
+    const petName = d.orders?.pets?.name as string | undefined;
+    const tutorWithPet = petName ? `${customerName} (🐾 ${petName})` : customerName;
     const itemsText = (d.delivery_items ?? [])
       .map((di: any) => {
         const oi = di.order_items;
@@ -31,7 +33,7 @@ export default async function CalendarioPage() {
     return {
       id: d.id as string,
       orderId: d.orders?.id as string,
-      title: `${customerName}${itemsText ? ` — ${itemsText}` : ""}`,
+      title: `${tutorWithPet}${itemsText ? ` — ${itemsText}` : ""}`,
       date: d.scheduled_date as string,
       time: d.scheduled_time as string | null,
       status: d.status as string,

@@ -15,7 +15,9 @@ export default async function NovoPedidoPage({
   const [{ data: customers }, { data: sizes }, { data: combos }] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, name, addresses(id, label, street, number, is_default)")
+      .select(
+        "id, name, pets(id, name, weight_kg), addresses(id, label, street, number, is_default)"
+      )
       .order("name"),
     supabase
       .from("recipe_sizes")

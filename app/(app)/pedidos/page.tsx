@@ -17,7 +17,7 @@ export default async function PedidosPage() {
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id, recurrence, status, total_price, profit, created_at, customers(name), deliveries(scheduled_date, delivery_type, status)"
+      "id, recurrence, status, total_price, profit, created_at, customers(name), pets(name), deliveries(scheduled_date, delivery_type, status)"
     )
     .order("created_at", { ascending: false });
 
@@ -67,7 +67,7 @@ export default async function PedidosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>Tutor / Pet</TableHead>
                   <TableHead className="hidden sm:table-cell">Data da entrega</TableHead>
                   <TableHead>Entrega</TableHead>
                   <TableHead>Plano</TableHead>
@@ -87,6 +87,7 @@ export default async function PedidosPage() {
                       key={o.id}
                       id={o.id}
                       customerName={oAny.customers?.name ?? "—"}
+                      petName={oAny.pets?.name ?? null}
                       nextDate={next?.scheduled_date ?? null}
                       deliveryType={deliveryType}
                       recurrence={o.recurrence}

@@ -44,7 +44,7 @@ export default async function EntregasPage({
     .from("deliveries")
     .select(
       `id, scheduled_date, scheduled_time, status, delivery_type, notes,
-       orders(id, recurrence, customers(name)),
+       orders(id, recurrence, customers(name), pets(name)),
        addresses(street, number),
        delivery_items(quantity, order_items(recipe_sizes(size_label, recipes(name)), combos(name)))`
     )
@@ -76,7 +76,7 @@ export default async function EntregasPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Data</TableHead>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>Tutor / Pet</TableHead>
                   <TableHead>Entrega</TableHead>
                   <TableHead>Plano</TableHead>
                   <TableHead className="hidden md:table-cell">Itens</TableHead>
@@ -88,6 +88,7 @@ export default async function EntregasPage({
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(deliveries as any[])!.map((d: any) => {
                   const customer = d.orders?.customers?.name ?? "—";
+                  const pet = d.orders?.pets?.name ?? null;
                   const orderId = d.orders?.id as string;
                   const recurrence = d.orders?.recurrence as string | undefined;
                   const street = d.addresses
@@ -117,6 +118,9 @@ export default async function EntregasPage({
                         <Link href={`/pedidos/${orderId}`} className="font-medium hover:underline">
                           {customer}
                         </Link>
+                        {pet && (
+                          <div className="text-xs text-muted-foreground">🐾 {pet}</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">

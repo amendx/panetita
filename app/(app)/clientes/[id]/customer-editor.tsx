@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Plus, Trash2, MapPin, PawPrint, Receipt, Loader2 } from "lucide-react";
+import { Pencil, Plus, Trash2, MapPin, PawPrint, Receipt, Loader2, MessageCircle } from "lucide-react";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NavButton } from "@/components/ui/nav-button";
@@ -139,11 +140,29 @@ export function CustomerEditor({
               </div>
             </div>
           ) : (
-            <div className="space-y-1 text-sm">
-              {customer.phone && <div>💬 WhatsApp: {customer.phone}</div>}
-              {customer.source && <div>🔎 Conheceu por: {customer.source}</div>}
+            <div className="space-y-3">
+              {customer.phone && (
+                <a
+                  href={whatsappUrl(customer.phone) ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  {customer.phone}
+                  <span className="text-xs text-emerald-700/70">· abrir WhatsApp</span>
+                </a>
+              )}
+              {customer.source && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Conheceu por: </span>
+                  <span className="font-medium">{customer.source}</span>
+                </div>
+              )}
               {customer.notes && (
-                <p className="mt-2 whitespace-pre-line text-muted-foreground">{customer.notes}</p>
+                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                  {customer.notes}
+                </p>
               )}
             </div>
           )}
@@ -173,14 +192,19 @@ export function CustomerEditor({
           )}
           {pets.map((p) => (
             <Card key={p.id}>
-              <CardContent className="flex items-start justify-between p-4">
-                <div>
-                  <div className="font-semibold">{p.name}</div>
-                  <div className="mt-0.5 text-sm text-muted-foreground">
-                    {p.breed ?? "Sem raça"}
-                    {p.weight_kg != null && ` · ${p.weight_kg} kg`}
+              <CardContent className="flex items-start justify-between gap-3 p-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl">
+                    🐾
                   </div>
-                  {p.notes && <p className="mt-1 text-xs text-muted-foreground">{p.notes}</p>}
+                  <div className="min-w-0">
+                    <div className="font-semibold">{p.name}</div>
+                    <div className="mt-0.5 text-sm text-muted-foreground">
+                      {p.breed ?? "Sem raça"}
+                      {p.weight_kg != null && ` · ${p.weight_kg} kg`}
+                    </div>
+                    {p.notes && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{p.notes}</p>}
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Button

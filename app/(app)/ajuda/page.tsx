@@ -4,13 +4,16 @@ import {
   Calculator,
   CalendarDays,
   ChefHat,
+  Heart,
   Home,
   Layers,
+  MessageCircle,
   Package,
   PackageOpen,
   PawPrint,
   Receipt,
   ShoppingCart,
+  Sparkles,
   TrendingUp,
   Truck,
   Wallet,
@@ -28,6 +31,48 @@ export default function AjudaPage() {
         title="📖 Como usar"
         description="Guia visual de tudo que o Panetita faz. Clique nos atalhos pra abrir cada tela."
       />
+
+      {/* NOVIDADES */}
+      <Card className="border-emerald-300 bg-emerald-50/60">
+        <CardContent className="p-5">
+          <div className="mb-2 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-emerald-700" />
+            <h2 className="text-lg font-bold text-emerald-900">Novidades recentes</h2>
+          </div>
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-start gap-2">
+              <PawPrint className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>Pet no pedido</strong> — agora cada pedido pode ser vinculado a um pet específico
+                do tutor. O nome do pet aparece em <Link href="/pedidos" className="text-primary underline">Pedidos</Link>,
+                <Link href="/entregas" className="text-primary underline"> Entregas</Link> e
+                <Link href="/calendario" className="text-primary underline"> Calendário</Link>.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>Botão "Avisar tutor"</strong> no detalhe do pedido — abre o WhatsApp com mensagem
+                pronta listando os itens, data da entrega, modo (Uber/Retirada) e total. ✨
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>WhatsApp clicável</strong> na ficha do tutor — toca no número e já abre o app.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Heart className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>Calculadora nutricional</strong> nova — diz quanto seu pet (de qualquer peso)
+                precisa de comida por dia, semana ou mês.{" "}
+                <Link href="/nutricao" className="text-primary underline">Abrir →</Link>
+              </span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
 
       {/* HERO — Início rápido */}
       <Card className="border-primary/40 bg-primary/5">
@@ -121,6 +166,12 @@ export default function AjudaPage() {
             icon={<Calculator className="h-5 w-5" />}
             title="Precificação"
             desc="Calculadora pra simular margem e preço antes de cadastrar."
+          />
+          <ScreenCard
+            href="/nutricao"
+            icon={<Heart className="h-5 w-5" />}
+            title="Nutrição"
+            desc="Calcula a quantidade ideal de comida por peso do animal e perfil de atividade."
           />
           <ScreenCard
             href="/relatorios"
@@ -323,6 +374,79 @@ export default function AjudaPage() {
               <ReportMetric label="Lucro estimado" desc="Faturamento estimado − Custo total" />
               <ReportMetric label="Lucro realizado" desc="Lucro apenas de pedidos totalmente pagos" tone="success" />
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* AVISAR TUTOR */}
+      <section>
+        <SectionTitle>💬 Avisar tutor pelo WhatsApp</SectionTitle>
+        <Card>
+          <CardContent className="p-6 text-sm space-y-3">
+            <p className="text-muted-foreground">
+              No detalhe de qualquer pedido, o botão verde{" "}
+              <Badge variant="success">💬 Avisar tutor</Badge> abre o WhatsApp do tutor com uma
+              mensagem pronta com:
+            </p>
+            <div className="rounded-md border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-line">
+{`Oi Maria! 🐶
+A panelinha do(a) Apolo está pronta!
+
+*Pedido:*
+• 15× Cordeiro · Médio I
+• 15× Frango · Pequeno II
+
+📅 *Entrega:* 22/10/2025 às 14:00
+🚚 *Modo:* Uber/99 (cliente paga)
+📍 Endereço: Rua das Flores, 123
+
+💰 *Total:* R$ 525,00
+
+Qualquer dúvida me chama por aqui! 🐾`}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ⚠️ O tutor precisa ter o número de WhatsApp cadastrado na ficha.
+              Vá em <Link href="/clientes" className="text-primary underline">Clientes</Link> e
+              preencha o campo se ainda não tiver.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* CALCULADORA NUTRICIONAL */}
+      <section>
+        <SectionTitle>❤️ Calculadora Nutricional</SectionTitle>
+        <Card>
+          <CardContent className="p-6 text-sm space-y-3">
+            <p className="text-muted-foreground">
+              Em <Link href="/nutricao" className="text-primary underline">Nutrição</Link> você
+              calcula quanto de comida um pet precisa por dia, semana, quinzena ou mês —
+              especialmente útil para animais grandes que não cabem nos tamanhos padrão.
+            </p>
+            <FormulaBox>
+              Comida/dia = Peso (kg) × Percentual do perfil × 1000
+            </FormulaBox>
+            <div className="grid gap-2 text-xs sm:grid-cols-2">
+              <div className="rounded-md border bg-card p-2">
+                <div className="font-medium">Filhote / muito ativo</div>
+                <div className="text-muted-foreground">4–6% do peso</div>
+              </div>
+              <div className="rounded-md border bg-card p-2">
+                <div className="font-medium">Adulto ativo</div>
+                <div className="text-muted-foreground">3–4% do peso</div>
+              </div>
+              <div className="rounded-md border bg-card p-2">
+                <div className="font-medium">Adulto padrão</div>
+                <div className="text-muted-foreground">2.5–3% do peso</div>
+              </div>
+              <div className="rounded-md border bg-card p-2">
+                <div className="font-medium">Sênior / sedentário</div>
+                <div className="text-muted-foreground">2–2.5% do peso</div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              💡 Selecione uma receita pra ver quantas unidades de cada tamanho seu pet vai precisar.
+            </p>
           </CardContent>
         </Card>
       </section>

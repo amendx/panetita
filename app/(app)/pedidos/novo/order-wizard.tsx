@@ -41,6 +41,7 @@ import type {
 interface CustomerOption {
   id: string;
   name: string;
+  pets: Array<{ id: string; name: string; weight_kg: number | null }>;
   addresses: Array<{ id: string; label: string | null; street: string; number: string | null; is_default: boolean }>;
 }
 
@@ -179,6 +180,7 @@ interface DraftPayment {
 export function OrderWizard({ data }: { data: OrderWizardData }) {
   const { toast } = useToast();
   const [customerId, setCustomerId] = useState(data.initialCustomerId ?? "");
+  const [petId, setPetId] = useState("");
   const [addressId, setAddressId] = useState("");
   const [strategy, setStrategy] = useState<PricingStrategy>("fixed_editable");
   const [marginPct, setMarginPct] = useState("50");
@@ -195,12 +197,18 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
 
   const customer = data.customers.find((c) => c.id === customerId) ?? null;
   const customerAddresses = customer?.addresses ?? [];
+  const customerPets = customer?.pets ?? [];
 
-  // Auto-pick default address when switching customer
+  // Auto-pick endereco padrao + pet unico ao escolher cliente
   useMemo(() => {
-    if (customer && !addressId) {
-      const def = customer.addresses.find((a) => a.is_default) ?? customer.addresses[0];
-      if (def) setAddressId(def.id);
+    if (customer) {
+      if (!addressId) {
+        const def = customer.addresses.find((a) => a.is_default) ?? customer.addresses[0];
+        if (def) setAddressId(def.id);
+      }
+      if (!petId && customer.pets.length === 1) {
+        setPetId(customer.pets[0].id);
+      }
     }
   }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -429,6 +437,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
 
     const payload: NewOrderInput = {
       customer_id: customerId,
+      pet_id: petId || null,
       address_id: addressId || null,
       recurrence,
       pricing_strategy: strategy,
@@ -520,12 +529,19 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Cliente</CardTitle>
+          <CardTitle className="text-base">Tutor e pet</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="grid gap-3 sm:grid-cols-3">
           <div>
-            <Label>Cliente</Label>
-            <Select value={customerId} onValueChange={(v) => { setCustomerId(v); setAddressId(""); }}>
+            <Label>Tutor (cliente)</Label>
+            <Select
+              value={customerId}
+              onValueChange={(v) => {
+                setCustomerId(v);
+                setAddressId("");
+                setPetId("");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
@@ -539,10 +555,38 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
             </Select>
           </div>
           <div>
+            <Label>Pet</Label>
+            <Select
+              value={petId}
+              onValueChange={setPetId}
+              disabled={!customer || customerPets.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    !customer
+                      ? "Selecione um tutor"
+                      : customerPets.length === 0
+                      ? "Sem pets cadastrados"
+                      : "Selecione"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {customerPets.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    🐾 {p.name}
+                    {p.weight_kg ? ` (${p.weight_kg}kg)` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label>Endereço</Label>
             <Select value={addressId} onValueChange={setAddressId} disabled={!customer}>
               <SelectTrigger>
-                <SelectValue placeholder={customer ? "Selecione" : "Selecione um cliente"} />
+                <SelectValue placeholder={customer ? "Selecione" : "Selecione um tutor"} />
               </SelectTrigger>
               <SelectContent>
                 {customerAddresses.map((a) => (

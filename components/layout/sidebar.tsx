@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ChefHat,
+  Heart,
   HelpCircle,
   Home,
   Package,
@@ -33,6 +34,7 @@ const NAV = [
   { href: "/compras", label: "Lista de Compras", icon: ShoppingCart },
   { href: "/pagamentos", label: "Pagamentos", icon: Wallet },
   { href: "/precificacao", label: "Precificação", icon: Calculator },
+  { href: "/nutricao", label: "Nutrição", icon: Heart },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/ajuda", label: "Como usar", icon: HelpCircle },
 ];
