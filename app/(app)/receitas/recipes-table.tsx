@@ -46,6 +46,10 @@ export interface RecipeRow {
         price_per_unit: number;
       };
     }>;
+    combo_items?: Array<{
+      combo_id: string;
+      combos: { id: string; name: string } | null;
+    }>;
   }>;
 }
 
@@ -104,7 +108,15 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleDelete(id: string, name: string) {
+  async function handleDelete(id: string, name: string, comboNames: string[]) {
+    if (comboNames.length > 0) {
+      toast({
+        title: "Receita usada em combo",
+        description: `Exclua antes ${comboNames.length === 1 ? "o combo" : "os combos"}: ${comboNames.join(", ")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     if (!confirm(`Excluir a receita "${name}"? Todos os tamanhos e composições serão removidos.`))
       return;
     setDeletingId(id);
@@ -145,6 +157,15 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
               }
               const margin = avgMargin(sizes);
               const isDeleting = deletingId === r.id;
+              const comboNames = Array.from(
+                new Set(
+                  sizes.flatMap((s) =>
+                    (s.combo_items ?? [])
+                      .map((ci) => ci.combos?.name)
+                      .filter((n): n is string => !!n)
+                  )
+                )
+              );
 
               return (
                 <TableRow
@@ -204,7 +225,7 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => handleDelete(r.id, r.name)}
+                          onClick={() => handleDelete(r.id, r.name, comboNames)}
                         >
                           <Trash2 className="h-4 w-4" /> Excluir
                         </DropdownMenuItem>

@@ -20,7 +20,8 @@ export default async function ReceitasPage() {
          recipe_size_ingredients(
            id, quantity, unit, ingredient_id,
            ingredients(id, name, unit, price_per_unit)
-         )
+         ),
+         combo_items(combo_id, combos(id, name))
        )`
     )
     .order("name", { ascending: true });
