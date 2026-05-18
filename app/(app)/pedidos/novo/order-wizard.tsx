@@ -41,7 +41,7 @@ import type {
 interface CustomerOption {
   id: string;
   name: string;
-  pets: Array<{ id: string; name: string; weight_kg: number | null }>;
+  pets: Array<{ id: string; name: string; weight_kg: number | null; restrictions: string | null }>;
   addresses: Array<{ id: string; label: string | null; street: string; number: string | null; is_default: boolean }>;
 }
 
@@ -599,6 +599,27 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Alerta de restrição alimentar do pet selecionado */}
+      {(() => {
+        const selectedPet = customerPets.find((p) => p.id === petId);
+        if (!selectedPet?.restrictions) return null;
+        return (
+          <div className="flex items-start gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-200 text-lg">
+              ⚠️
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold text-amber-900">
+                Atenção: restrição alimentar de {selectedPet.name}
+              </div>
+              <p className="mt-0.5 text-sm text-amber-900 whitespace-pre-line">
+                {selectedPet.restrictions}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

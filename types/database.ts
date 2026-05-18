@@ -94,6 +94,8 @@ export interface Pet {
   name: string;
   weight_kg: number | null;
   breed: string | null;
+  /** Restrições alimentares / avisos importantes que aparecem no pedido */
+  restrictions: string | null;
   notes: string | null;
   photo_url: string | null;
 }

@@ -96,6 +96,7 @@ export async function savePet(input: {
   name: string;
   weight_kg?: number | null;
   breed?: string | null;
+  restrictions?: string | null;
   notes?: string | null;
 }) {
   await withUser(async ({ supabase, userId }) => {
@@ -104,6 +105,7 @@ export async function savePet(input: {
       name: input.name,
       weight_kg: input.weight_kg ?? null,
       breed: input.breed ?? null,
+      restrictions: input.restrictions ?? null,
       notes: input.notes ?? null,
       user_id: userId,
     };

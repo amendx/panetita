@@ -41,6 +41,14 @@ export default function AjudaPage() {
           </div>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
+              <span className="mt-0.5 text-base">⚠️</span>
+              <span>
+                <strong>Restrições alimentares do pet</strong> — adicione na ficha do pet
+                (ex: alergia a frango, sem grãos). Aparece como aviso visível ao criar pedido
+                e no detalhe.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
               <PawPrint className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
               <span>
                 <strong>Pet no pedido</strong> — agora cada pedido pode ser vinculado a um pet específico
@@ -374,6 +382,41 @@ export default function AjudaPage() {
               <ReportMetric label="Lucro estimado" desc="Faturamento estimado − Custo total" />
               <ReportMetric label="Lucro realizado" desc="Lucro apenas de pedidos totalmente pagos" tone="success" />
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* RESTRIÇÕES ALIMENTARES */}
+      <section>
+        <SectionTitle>⚠️ Restrições alimentares do pet</SectionTitle>
+        <Card className="border-amber-300">
+          <CardContent className="p-6 text-sm space-y-3">
+            <p className="text-muted-foreground">
+              Em <Link href="/clientes" className="text-primary underline">Clientes</Link>, ao
+              editar/cadastrar um pet, preencha o campo{" "}
+              <strong>"Restrições alimentares"</strong> com avisos importantes (ex.: alergias,
+              dieta especial, sem grãos).
+            </p>
+            <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <div className="font-bold text-amber-900">
+                    Atenção: restrição alimentar de Apolo
+                  </div>
+                  <p className="text-amber-900">Alergia a frango. Não usar frango ou caldo.</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              💡 Esse aviso aparece automaticamente:
+              <br />— Ao selecionar o pet no <strong>wizard de novo pedido</strong>;
+              <br />— No <strong>detalhe do pedido</strong> (logo abaixo dos totais).
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Na lista de clientes, tutores com pets que têm restrição mostram o aviso
+              "⚠️ Tem pet com restrição alimentar" no card.
+            </p>
           </CardContent>
         </Card>
       </section>

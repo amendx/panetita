@@ -41,7 +41,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
       `
       *,
       customers(id, name, phone),
-      pets(id, name, weight_kg),
+      pets(id, name, weight_kg, restrictions),
       addresses(id, label, street, number, complement, neighborhood, city, state),
       order_items(
         id, quantity, measure_type, measure_unit, unit_price, unit_cost, line_total, line_cost,
@@ -133,6 +133,22 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
           </CardContent>
         </Card>
       </div>
+
+      {pet?.restrictions && (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-200 text-lg">
+            ⚠️
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold text-amber-900">
+              Atenção: restrição alimentar de {pet.name}
+            </div>
+            <p className="mt-0.5 text-sm text-amber-900 whitespace-pre-line">
+              {pet.restrictions}
+            </p>
+          </div>
+        </div>
+      )}
 
       {address && (
         <Card className="mt-4">

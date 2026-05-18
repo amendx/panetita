@@ -19,7 +19,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { formatBRL, formatDate, recurrenceLabel, statusLabel } from "@/lib/format";
+import { formatBRL, formatDate, formatPhone, recurrenceLabel, statusLabel } from "@/lib/format";
 import {
   deleteAddress,
   deleteCustomer,
@@ -149,7 +149,7 @@ export function CustomerEditor({
                   className="inline-flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
                 >
                   <MessageCircle className="h-4 w-4" />
-                  {customer.phone}
+                  {formatPhone(customer.phone)}
                   <span className="text-xs text-emerald-700/70">· abrir WhatsApp</span>
                 </a>
               )}
@@ -203,6 +203,11 @@ export function CustomerEditor({
                       {p.breed ?? "Sem raça"}
                       {p.weight_kg != null && ` · ${p.weight_kg} kg`}
                     </div>
+                    {p.restrictions && (
+                      <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+                        ⚠️ <strong>Restrição:</strong> {p.restrictions}
+                      </div>
+                    )}
                     {p.notes && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{p.notes}</p>}
                   </div>
                 </div>
@@ -400,6 +405,7 @@ function PetDialog({
   const [name, setName] = useState(pet?.name ?? "");
   const [weight, setWeight] = useState(pet?.weight_kg != null ? String(pet.weight_kg) : "");
   const [breed, setBreed] = useState(pet?.breed ?? "");
+  const [restrictions, setRestrictions] = useState(pet?.restrictions ?? "");
   const [notes, setNotes] = useState(pet?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -408,6 +414,7 @@ function PetDialog({
     setName(pet.name);
     setWeight(pet.weight_kg != null ? String(pet.weight_kg) : "");
     setBreed(pet.breed ?? "");
+    setRestrictions(pet.restrictions ?? "");
     setNotes(pet.notes ?? "");
   }
 
@@ -424,6 +431,7 @@ function PetDialog({
         name,
         weight_kg: weight ? parseFloat(weight.replace(",", ".")) : null,
         breed: breed || null,
+        restrictions: restrictions || null,
         notes: notes || null,
       });
       toast({ title: pet ? "Pet atualizado" : "Pet criado" });
@@ -448,11 +456,13 @@ function PetDialog({
           setName("");
           setWeight("");
           setBreed("");
+          setRestrictions("");
           setNotes("");
         } else if (pet) {
           setName(pet.name);
           setWeight(pet.weight_kg != null ? String(pet.weight_kg) : "");
           setBreed(pet.breed ?? "");
+          setRestrictions(pet.restrictions ?? "");
           setNotes(pet.notes ?? "");
         }
       }}
@@ -481,8 +491,22 @@ function PetDialog({
             </div>
           </div>
           <div>
-            <Label>Observações</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Label className="flex items-center gap-1.5">
+              ⚠️ Restrições alimentares
+            </Label>
+            <Textarea
+              value={restrictions}
+              onChange={(e) => setRestrictions(e.target.value)}
+              placeholder="Ex: alergia a frango, sem cebola, dieta sem grãos..."
+              rows={2}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aparece como aviso na hora de fazer o pedido.
+            </p>
+          </div>
+          <div>
+            <Label>Observações gerais</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
         </div>
         <DialogFooter>

@@ -34,6 +34,28 @@ export function toISODate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/**
+ * Formata telefone brasileiro:
+ * - 11 dígitos (celular): (11) 9XXXX-XXXX
+ * - 10 dígitos (fixo):    (11) XXXX-XXXX
+ * - Com DDI 55 (12/13 dígitos): remove o 55 e formata o resto
+ * - Outros tamanhos: devolve só os dígitos formatados melhor que pode
+ */
+export function formatPhone(phone: string | null | undefined): string {
+  if (!phone) return "";
+  let digits = phone.replace(/\D/g, "");
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
 export function unitLabel(unit: string): string {
   const map: Record<string, string> = {
     g: "g",

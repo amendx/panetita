@@ -16,7 +16,7 @@ export default async function NovoPedidoPage({
     supabase
       .from("customers")
       .select(
-        "id, name, pets(id, name, weight_kg), addresses(id, label, street, number, is_default)"
+        "id, name, pets(id, name, weight_kg, restrictions), addresses(id, label, street, number, is_default)"
       )
       .order("name"),
     supabase
