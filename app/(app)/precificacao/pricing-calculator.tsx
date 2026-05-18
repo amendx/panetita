@@ -6,8 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { recipeSizeCost } from "@/lib/pricing";
+import {
+  pctFromCostPrice,
+  priceFromCostPct,
+  profitModeLabel,
+  recipeSizeCost,
+} from "@/lib/pricing";
 import { formatBRL, unitLabel } from "@/lib/format";
+import type { ProfitCalcMode } from "@/types/database";
 
 interface SizeRow {
   id: string;
@@ -24,11 +30,19 @@ interface SizeRow {
   }>;
 }
 
-export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
+export function PricingCalculator({
+  sizes,
+  profitMode,
+}: {
+  sizes: SizeRow[];
+  profitMode: ProfitCalcMode;
+}) {
   const [sizeId, setSizeId] = useState(sizes[0]?.id ?? "");
-  const [margin, setMargin] = useState("60");
+  // Default 60% margem ≈ 150% markup. Mantém um número confortável por modo.
+  const [pct, setPct] = useState(profitMode === "markup" ? "100" : "60");
 
   const selected = sizes.find((s) => s.id === sizeId) ?? null;
+  const modeLabel = profitModeLabel(profitMode);
 
   const cost = useMemo(() => {
     if (!selected) return 0;
@@ -60,10 +74,11 @@ export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
     });
   }, [selected]);
 
-  const m = (parseFloat(margin.replace(",", ".")) || 0) / 100;
-  const suggested = m < 1 ? cost / (1 - m) : cost;
+  const pctNumber = parseFloat(pct.replace(",", ".")) || 0;
+  const suggested = priceFromCostPct(cost, pctNumber, profitMode);
   const fixed = selected?.fixed_price != null ? Number(selected.fixed_price) : null;
-  const currentMargin = fixed != null && fixed > 0 ? ((fixed - cost) / fixed) * 100 : null;
+  const currentPct =
+    fixed != null && fixed > 0 ? pctFromCostPrice(cost, fixed, profitMode) : null;
 
   return (
     <div className="space-y-4">
@@ -85,12 +100,17 @@ export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
             </Select>
           </div>
           <div>
-            <Label>Margem desejada (%)</Label>
+            <Label>{modeLabel} desejado (%)</Label>
             <Input
               inputMode="decimal"
-              value={margin}
-              onChange={(e) => setMargin(e.target.value)}
+              value={pct}
+              onChange={(e) => setPct(e.target.value)}
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {profitMode === "markup"
+                ? "Aplicado sobre o custo (preço = custo × (1 + %))"
+                : "Aplicado sobre o preço final (preço = custo ÷ (1 − %))"}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -104,7 +124,6 @@ export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
             <CardContent>
               <ul className="space-y-1 text-sm">
                 {selected.recipe_size_ingredients.map((r) => {
-                  // simple cost calc reused from ingredient
                   const ing = r.ingredients;
                   const qtyInIngUnit =
                     r.unit === ing.unit
@@ -140,7 +159,7 @@ export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
             <Card>
               <CardContent className="p-4">
                 <div className="text-xs text-muted-foreground">
-                  Preço sugerido ({margin}% margem)
+                  Preço sugerido ({pct}% {modeLabel.toLowerCase()})
                 </div>
                 <div className="text-xl font-bold text-primary">{formatBRL(suggested)}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -154,9 +173,9 @@ export function PricingCalculator({ sizes }: { sizes: SizeRow[] }) {
                 <div className="text-xl font-bold">
                   {fixed != null ? formatBRL(fixed) : "—"}
                 </div>
-                {currentMargin != null && (
+                {currentPct != null && (
                   <Badge variant="secondary" className="mt-1">
-                    Margem atual: {currentMargin.toFixed(1)}%
+                    {modeLabel} atual: {currentPct.toFixed(1)}%
                   </Badge>
                 )}
               </CardContent>

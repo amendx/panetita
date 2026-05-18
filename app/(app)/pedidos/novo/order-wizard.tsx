@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import {
   comboCost,
   comboCalculatedPrice,
+  pctFromCostPrice,
+  profitModeLabel,
   recipeSizeCost,
   recipeSizeUnitPriceFor,
   resolveUnitPrice,
@@ -35,6 +37,7 @@ import type {
   MeasureUnit,
   PaymentMethod,
   PricingStrategy,
+  ProfitCalcMode,
   Recurrence,
 } from "@/types/database";
 
@@ -177,13 +180,21 @@ interface DraftPayment {
   status: "pending" | "paid";
 }
 
-export function OrderWizard({ data }: { data: OrderWizardData }) {
+export function OrderWizard({
+  data,
+  profitMode,
+}: {
+  data: OrderWizardData;
+  profitMode: ProfitCalcMode;
+}) {
   const { toast } = useToast();
+  const modeLabel = profitModeLabel(profitMode);
+  const defaultPct = profitMode === "markup" ? "100" : "50";
   const [customerId, setCustomerId] = useState(data.initialCustomerId ?? "");
   const [petId, setPetId] = useState("");
   const [addressId, setAddressId] = useState("");
   const [strategy, setStrategy] = useState<PricingStrategy>("fixed_editable");
-  const [marginPct, setMarginPct] = useState("50");
+  const [marginPct, setMarginPct] = useState(defaultPct);
   const [recurrence, setRecurrence] = useState<Recurrence>("single");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
@@ -222,6 +233,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
           basePrice: it.basePrice,
           unitCost: it.unit_cost,
           marginPct: parseFloat(marginPct) || 0,
+          profitMode,
         }),
       }))
     );
@@ -255,6 +267,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
       basePrice,
       unitCost,
       marginPct: parseFloat(marginPct) || 0,
+      profitMode,
     });
     // Tanto receitas quanto combos seguem a fórmula da recorrência
     // (1 panelinha por dia). 1 se for custom/single sem unidades definidas.
@@ -287,6 +300,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
             basePrice: merged.basePrice,
             unitCost: merged.unit_cost,
             marginPct: parseFloat(marginPct) || 0,
+            profitMode,
           });
         }
         return merged;
@@ -317,6 +331,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
           basePrice,
           unitCost: it.unit_cost,
           marginPct: parseFloat(marginPct) || 0,
+          profitMode,
         });
         return {
           ...it,
@@ -490,7 +505,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
   }
 
   const totalUnits = items.reduce((a, i) => a + i.quantity, 0);
-  const marginPctValue = totalPrice > 0 ? (profit / totalPrice) * 100 : 0;
+  const marginPctValue = pctFromCostPrice(totalCost, totalPrice, profitMode);
 
   return (
     <div className="space-y-6">
@@ -517,7 +532,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
               />
               <SummaryStat
                 icon={<Percent className="h-4 w-4" />}
-                label="Margem"
+                label={modeLabel}
                 value={`${marginPctValue.toFixed(1)}%`}
               />
               <SummaryStat icon={<Truck className="h-4 w-4" />} label="Entregas" value={String(deliveries.length)} />

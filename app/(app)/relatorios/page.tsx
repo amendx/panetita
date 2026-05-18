@@ -13,6 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatBRL, formatDate, recurrenceLabel, toISODate } from "@/lib/format";
+import { pctFromCostPrice, profitModeLabel } from "@/lib/pricing";
+import { getProfitCalcMode } from "@/lib/user-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,7 @@ export default async function RelatoriosPage({
     { data: orders },
     { data: allCustomers },
     { data: allPets },
+    profitMode,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -54,7 +57,9 @@ export default async function RelatoriosPage({
       .order("created_at", { ascending: false }),
     supabase.from("customers").select("id, name, created_at"),
     supabase.from("pets").select("id, name, weight_kg, customer_id, restrictions"),
+    getProfitCalcMode(),
   ]);
+  const modeLabel = profitModeLabel(profitMode);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   function totalsForOrder(o: any) {
@@ -89,7 +94,7 @@ export default async function RelatoriosPage({
     const t = totalsForOrder(o as any);
     return a + (t.isFullyPaid ? t.profit : 0);
   }, 0);
-  const margin = estimatedRevenue > 0 ? (estimatedProfit / estimatedRevenue) * 100 : 0;
+  const margin = pctFromCostPrice(totalCost, estimatedRevenue, profitMode);
 
   // Top customers (estimado)
   const byCustomer = new Map<string, { name: string; revenue: number; orders: number }>();
@@ -224,7 +229,7 @@ export default async function RelatoriosPage({
               {formatBRL(estimatedProfit)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Margem média: {margin.toFixed(1)}%
+              {modeLabel} médio: {margin.toFixed(1)}%
             </div>
           </CardContent>
         </Card>

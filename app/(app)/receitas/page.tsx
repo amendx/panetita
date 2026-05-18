@@ -5,16 +5,18 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getProfitCalcMode } from "@/lib/user-settings";
 import { RecipesTable, type RecipeRow } from "./recipes-table";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReceitasPage() {
   const supabase = await createClient();
-  const { data: recipes } = await supabase
-    .from("recipes")
-    .select(
-      `id, name, description,
+  const [{ data: recipes }, profitMode] = await Promise.all([
+    supabase
+      .from("recipes")
+      .select(
+        `id, name, description,
        recipe_sizes(
          id, size_label, fixed_price,
          recipe_size_ingredients(
@@ -23,8 +25,10 @@ export default async function ReceitasPage() {
          ),
          combo_items(combo_id, combos(id, name))
        )`
-    )
-    .order("name", { ascending: true });
+      )
+      .order("name", { ascending: true }),
+    getProfitCalcMode(),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -46,7 +50,7 @@ export default async function ReceitasPage() {
           </CardContent>
         </Card>
       ) : (
-        <RecipesTable recipes={(recipes ?? []) as unknown as RecipeRow[]} />
+        <RecipesTable recipes={(recipes ?? []) as unknown as RecipeRow[]} profitMode={profitMode} />
       )}
     </div>
   );

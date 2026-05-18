@@ -23,7 +23,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { formatBRL } from "@/lib/format";
-import { recipeSizeCost, type RecipeSizeWithIngredients } from "@/lib/pricing";
+import {
+  pctFromCostPrice,
+  profitModeLabel,
+  recipeSizeCost,
+  type RecipeSizeWithIngredients,
+} from "@/lib/pricing";
+import type { ProfitCalcMode } from "@/types/database";
 import { deleteRecipe } from "./actions";
 
 export interface RecipeRow {
@@ -92,21 +98,28 @@ function rangeBRL(values: number[]): string {
   return `${formatBRL(min)} – ${formatBRL(max)}`;
 }
 
-function avgMargin(sizes: RecipeRow["recipe_sizes"]): number | null {
+function avgPct(sizes: RecipeRow["recipe_sizes"], mode: ProfitCalcMode): number | null {
   const withPrice = sizes.filter((s) => s.fixed_price != null && Number(s.fixed_price) > 0);
   if (withPrice.length === 0) return null;
-  const margins = withPrice.map((s) => {
-    const cost = recipeSizeCost(sizeWithIngredients(s));
-    const price = Number(s.fixed_price);
-    return ((price - cost) / price) * 100;
-  });
-  return margins.reduce((a, b) => a + b, 0) / margins.length;
+  const pcts = withPrice.map((s) =>
+    pctFromCostPrice(recipeSizeCost(sizeWithIngredients(s)), Number(s.fixed_price), mode)
+  );
+  return pcts.reduce((a, b) => a + b, 0) / pcts.length;
 }
 
-export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
+export function RecipesTable({
+  recipes,
+  profitMode,
+}: {
+  recipes: RecipeRow[];
+  profitMode: ProfitCalcMode;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const modeLabel = profitModeLabel(profitMode);
+  // Markup pode passar de 100%; margem fica entre 0 e 100. Ajusta os limiares.
+  const thresholds = profitMode === "markup" ? { good: 100, ok: 50 } : { good: 50, ok: 30 };
 
   async function handleDelete(id: string, name: string, comboNames: string[]) {
     if (comboNames.length > 0) {
@@ -140,7 +153,7 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
               <TableHead className="hidden text-right md:table-cell">Ingredientes</TableHead>
               <TableHead className="text-right">Custo</TableHead>
               <TableHead className="text-right">Preço fixo</TableHead>
-              <TableHead className="hidden text-right md:table-cell">Margem média</TableHead>
+              <TableHead className="hidden text-right md:table-cell">{modeLabel} médio</TableHead>
               <TableHead className="w-14"></TableHead>
             </TableRow>
           </TableHeader>
@@ -155,7 +168,7 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
               for (const s of sizes) {
                 for (const rsi of s.recipe_size_ingredients ?? []) ingredientIds.add(rsi.ingredient_id);
               }
-              const margin = avgMargin(sizes);
+              const pctAvg = avgPct(sizes, profitMode);
               const isDeleting = deletingId === r.id;
               const comboNames = Array.from(
                 new Set(
@@ -200,9 +213,17 @@ export function RecipesTable({ recipes }: { recipes: RecipeRow[] }) {
                   <TableCell className="text-right tabular-nums">{rangeBRL(costs.filter((c) => c > 0))}</TableCell>
                   <TableCell className="text-right tabular-nums">{rangeBRL(prices)}</TableCell>
                   <TableCell className="hidden text-right tabular-nums md:table-cell">
-                    {margin != null ? (
-                      <Badge variant={margin >= 50 ? "success" : margin >= 30 ? "warning" : "destructive"}>
-                        {margin.toFixed(1)}%
+                    {pctAvg != null ? (
+                      <Badge
+                        variant={
+                          pctAvg >= thresholds.good
+                            ? "success"
+                            : pctAvg >= thresholds.ok
+                            ? "warning"
+                            : "destructive"
+                        }
+                      >
+                        {pctAvg.toFixed(1)}%
                       </Badge>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>

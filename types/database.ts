@@ -16,6 +16,14 @@ export type PaymentMethod = "pix" | "cash" | "card" | "transfer" | "other";
 export type IngredientUnit = "g" | "kg" | "un" | "ml" | "l";
 export type MeasureType = "portion" | "weight";
 export type MeasureUnit = "un" | "g" | "kg";
+export type ProfitCalcMode = "margin" | "markup";
+
+export interface UserSettings {
+  user_id: string;
+  profit_calc_mode: ProfitCalcMode;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Ingredient {
   id: string;
@@ -203,6 +211,7 @@ export interface Database {
       deliveries: TableDef<Delivery>;
       delivery_items: TableDef<DeliveryItem>;
       payments: TableDef<Payment>;
+      user_settings: TableDef<UserSettings>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

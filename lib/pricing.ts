@@ -2,12 +2,49 @@ import type {
   Ingredient,
   IngredientUnit,
   PricingStrategy,
+  ProfitCalcMode,
   Recurrence,
   RecipeSize,
   RecipeSizeIngredient,
   Combo,
   ComboItem,
 } from "@/types/database";
+
+/**
+ * Calcula o preço a partir do custo e da porcentagem informada,
+ * respeitando o modo escolhido pelo usuário:
+ *   - margin: a % é sobre o PREÇO final. preço = custo / (1 - p)
+ *   - markup: a % é sobre o CUSTO.       preço = custo * (1 + p)
+ */
+export function priceFromCostPct(
+  cost: number,
+  pct: number,
+  mode: ProfitCalcMode
+): number {
+  if (cost <= 0) return 0;
+  const p = (pct || 0) / 100;
+  if (mode === "markup") return cost * (1 + p);
+  if (p >= 1) return cost;
+  return cost / (1 - p);
+}
+
+/**
+ * Calcula a porcentagem que liga custo→preço no modo escolhido.
+ *   - margin: ((preço - custo) / preço) * 100
+ *   - markup: ((preço - custo) / custo) * 100
+ */
+export function pctFromCostPrice(
+  cost: number,
+  price: number,
+  mode: ProfitCalcMode
+): number {
+  if (price <= 0) return 0;
+  if (mode === "markup") return cost > 0 ? ((price - cost) / cost) * 100 : 0;
+  return ((price - cost) / price) * 100;
+}
+
+export const profitModeLabel = (mode: ProfitCalcMode): string =>
+  mode === "markup" ? "Markup" : "Margem";
 
 /**
  * Devolve o preço unitário cadastrado adequado à recorrência do pedido.
@@ -134,8 +171,9 @@ export function resolveUnitPrice(opts: {
   unitCost: number;
   marginPct: number | null;
   overridePrice?: number | null;
+  profitMode?: ProfitCalcMode;
 }): number {
-  const { strategy, basePrice, unitCost, marginPct, overridePrice } = opts;
+  const { strategy, basePrice, unitCost, marginPct, overridePrice, profitMode } = opts;
 
   if (strategy === "fixed") {
     // Sem preço cadastrado, sugere cost*2 (100% markup) para evitar total zerado.
@@ -147,10 +185,8 @@ export function resolveUnitPrice(opts: {
     // Sem preço cadastrado: sugere cost*2 como ponto de partida editável.
     return unitCost > 0 ? unitCost * 2 : 0;
   }
-  // margin: price = cost / (1 - marginPct/100)
-  const m = (marginPct ?? 0) / 100;
-  if (m >= 1) return unitCost;
-  return unitCost / (1 - m);
+  // strategy === "margin": usa o modo escolhido pelo usuário.
+  return priceFromCostPct(unitCost, marginPct ?? 0, profitMode ?? "margin");
 }
 
 export interface OrderItemTotals {

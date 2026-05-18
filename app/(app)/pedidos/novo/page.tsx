@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
+import { getProfitCalcMode } from "@/lib/user-settings";
 import { OrderWizard, type OrderWizardData } from "./order-wizard";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export default async function NovoPedidoPage({
   const { cliente } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: sizes }, { data: combos }] = await Promise.all([
+  const [{ data: customers }, { data: sizes }, { data: combos }, profitMode] = await Promise.all([
     supabase
       .from("customers")
       .select(
@@ -31,6 +32,7 @@ export default async function NovoPedidoPage({
         "id, name, fixed_price, discount_pct, combo_items(id, quantity, recipe_size_id, recipe_sizes(id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))))"
       )
       .order("name"),
+    getProfitCalcMode(),
   ]);
 
   const data: OrderWizardData = {
@@ -43,7 +45,7 @@ export default async function NovoPedidoPage({
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title="Novo pedido" description="Cliente, itens, entregas e pagamento" />
-      <OrderWizard data={data} />
+      <OrderWizard data={data} profitMode={profitMode} />
     </div>
   );
 }

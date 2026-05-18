@@ -27,7 +27,13 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { formatBRL, unitLabel } from "@/lib/format";
-import { ingredientLineCost, recipeSizeCost } from "@/lib/pricing";
+import {
+  ingredientLineCost,
+  pctFromCostPrice,
+  priceFromCostPct,
+  profitModeLabel,
+  recipeSizeCost,
+} from "@/lib/pricing";
 import {
   addRecipeSize,
   addSizeIngredient,
@@ -37,7 +43,13 @@ import {
   updateRecipe,
   updateRecipeSize,
 } from "../actions";
-import type { Ingredient, IngredientUnit, Recipe, RecipeSize } from "@/types/database";
+import type {
+  Ingredient,
+  IngredientUnit,
+  ProfitCalcMode,
+  Recipe,
+  RecipeSize,
+} from "@/types/database";
 
 type SizeRow = RecipeSize & {
   recipe_size_ingredients: Array<{
@@ -54,11 +66,13 @@ export function RecipeEditor({
   sizes,
   ingredients,
   startInEditMode = false,
+  profitMode,
 }: {
   recipe: Recipe;
   sizes: SizeRow[];
   ingredients: Ingredient[];
   startInEditMode?: boolean;
+  profitMode: ProfitCalcMode;
 }) {
   const { toast } = useToast();
   const [editingRecipe, setEditingRecipe] = useState(startInEditMode);
@@ -207,6 +221,7 @@ export function RecipeEditor({
               onEdit={() => setEditingSizeId(size.id)}
               onCancelEdit={() => setEditingSizeId(null)}
               onDelete={() => handleDeleteSize(size.id)}
+              profitMode={profitMode}
             />
           ))
         )}
@@ -258,6 +273,7 @@ function SizeCard({
   onEdit,
   onCancelEdit,
   onDelete,
+  profitMode,
 }: {
   size: SizeRow;
   ingredients: Ingredient[];
@@ -266,13 +282,17 @@ function SizeCard({
   onEdit: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
+  profitMode: ProfitCalcMode;
 }) {
   const { toast } = useToast();
+  const modeLabel = profitModeLabel(profitMode);
+  // Sugestão padrão: 60% se modo margem, 100% se modo markup (ambos ≈ dobram o custo).
+  const defaultPct = profitMode === "markup" ? 100 : 60;
   const [label, setLabel] = useState(size.size_label);
   const [price, setPrice] = useState<number>(
     size.fixed_price != null ? Number(size.fixed_price) : 0
   );
-  const [margin, setMargin] = useState("60");
+  const [pct, setPct] = useState(String(defaultPct));
 
   const [ingredientId, setIngredientId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -293,29 +313,27 @@ function SizeCard({
     })),
   });
 
-  // Sugestão com 60% de margem (preço = custo / (1 - 0.6))
-  const suggestedPrice60 = cost > 0 ? cost / (1 - 0.6) : 0;
+  // Sugestão padrão conforme o modo (60% margem ou 100% markup — ambos ≈ dobram o custo)
+  const suggestedPrice = priceFromCostPct(cost, defaultPct, profitMode);
 
-  // Sincroniza margem ↔ preço
-  function handleMarginChange(value: string) {
-    setMargin(value);
-    const m = parseFloat(value.replace(",", ".")) / 100;
-    if (cost > 0 && m < 1 && m >= 0) {
-      setPrice(cost / (1 - m));
+  function handlePctChange(value: string) {
+    setPct(value);
+    const n = parseFloat(value.replace(",", ".")) || 0;
+    if (cost > 0) {
+      setPrice(priceFromCostPct(cost, n, profitMode));
     }
   }
 
   function handlePriceChange(newPrice: number) {
     setPrice(newPrice);
     if (cost > 0 && newPrice > 0) {
-      const newMargin = ((newPrice - cost) / newPrice) * 100;
-      setMargin(newMargin.toFixed(1));
+      setPct(pctFromCostPrice(cost, newPrice, profitMode).toFixed(1));
     }
   }
 
   function applySuggestion() {
-    setPrice(suggestedPrice60);
-    setMargin("60");
+    setPrice(suggestedPrice);
+    setPct(String(defaultPct));
   }
 
   async function handleSave() {
@@ -384,7 +402,7 @@ function SizeCard({
             <CardTitle className="text-base">Tamanho {size.size_label}</CardTitle>
             {size.fixed_price != null ? (
               <Badge variant="secondary">Preço fixo {formatBRL(Number(size.fixed_price))}</Badge>
-            ) : suggestedPrice60 > 0 ? (
+            ) : suggestedPrice > 0 ? (
               <Badge variant="warning">Sem preço fixo</Badge>
             ) : null}
           </div>
@@ -393,16 +411,16 @@ function SizeCard({
             {size.fixed_price != null && Number(size.fixed_price) > 0 ? (
               <>
                 {" "}
-                · Margem:{" "}
+                · {modeLabel}:{" "}
                 <span className="font-medium">
-                  {(((Number(size.fixed_price) - cost) / Number(size.fixed_price)) * 100).toFixed(1)}%
+                  {pctFromCostPrice(cost, Number(size.fixed_price), profitMode).toFixed(1)}%
                 </span>
               </>
-            ) : suggestedPrice60 > 0 ? (
+            ) : suggestedPrice > 0 ? (
               <>
                 {" "}
-                · Sugestão (60% margem):{" "}
-                <span className="font-medium text-primary">{formatBRL(suggestedPrice60)}</span>
+                · Sugestão ({defaultPct}% {modeLabel.toLowerCase()}):{" "}
+                <span className="font-medium text-primary">{formatBRL(suggestedPrice)}</span>
               </>
             ) : null}
           </p>
@@ -429,11 +447,11 @@ function SizeCard({
                 <CurrencyInput value={price} onChange={handlePriceChange} />
               </div>
               <div>
-                <Label>Margem desejada (%)</Label>
+                <Label>{modeLabel} desejado (%)</Label>
                 <Input
-                  value={margin}
-                  onChange={(e) => handleMarginChange(e.target.value)}
-                  placeholder="60"
+                  value={pct}
+                  onChange={(e) => handlePctChange(e.target.value)}
+                  placeholder={String(defaultPct)}
                   inputMode="decimal"
                 />
               </div>
@@ -442,10 +460,10 @@ function SizeCard({
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-background p-2 text-xs">
                 <span className="text-muted-foreground">
                   Custo: <span className="font-medium">{formatBRL(cost)}</span> · Sugestão
-                  (60%): <span className="font-medium">{formatBRL(suggestedPrice60)}</span>
+                  ({defaultPct}%): <span className="font-medium">{formatBRL(suggestedPrice)}</span>
                 </span>
                 <Button type="button" variant="outline" size="sm" onClick={applySuggestion}>
-                  Usar sugestão (60%)
+                  Usar sugestão ({defaultPct}%)
                 </Button>
               </div>
             )}

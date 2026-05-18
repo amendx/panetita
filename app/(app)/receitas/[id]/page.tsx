@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { getProfitCalcMode } from "@/lib/user-settings";
 import { RecipeEditor } from "./recipe-editor";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function ReceitaDetailPage({
   const { edit } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: recipe }, { data: sizes }, { data: ingredients }] = await Promise.all([
+  const [{ data: recipe }, { data: sizes }, { data: ingredients }, profitMode] = await Promise.all([
     supabase.from("recipes").select("*").eq("id", id).single(),
     supabase
       .from("recipe_sizes")
@@ -29,6 +30,7 @@ export default async function ReceitaDetailPage({
       .eq("recipe_id", id)
       .order("size_label"),
     supabase.from("ingredients").select("*").order("name"),
+    getProfitCalcMode(),
   ]);
 
   if (!recipe) notFound();
@@ -46,6 +48,7 @@ export default async function ReceitaDetailPage({
         sizes={(sizes ?? []) as never[]}
         ingredients={ingredients ?? []}
         startInEditMode={edit === "1"}
+        profitMode={profitMode}
       />
     </div>
   );
