@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   ChefHat,
+  HelpCircle,
   Home,
   Package,
   PackageOpen,
@@ -33,6 +34,7 @@ const NAV = [
   { href: "/pagamentos", label: "Pagamentos", icon: Wallet },
   { href: "/precificacao", label: "Precificação", icon: Calculator },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/ajuda", label: "Como usar", icon: HelpCircle },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

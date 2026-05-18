@@ -86,7 +86,7 @@ export interface OrderWizardData {
 const RECURRENCE_UNITS: Record<Recurrence, number> = {
   single: 1,
   weekly: 7,
-  biweekly: 15,
+  biweekly: 14,
   monthly: 28,
   custom: 0,
 };
@@ -348,7 +348,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
       setDeliveries(
         Array.from({ length: 2 }).map((_, i) => ({
           key: cryptoId(),
-          date: toISODate(addDays(base, i * 15)),
+          date: toISODate(addDays(base, i * 14)),
           time: "",
           delivery_type: defaultDeliveryType,
           itemQuantities: {},
@@ -575,7 +575,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
               <SelectContent>
                 <SelectItem value="single">Único (avulso)</SelectItem>
                 <SelectItem value="weekly">Semanal — 7 unidades por receita</SelectItem>
-                <SelectItem value="biweekly">Quinzenal — 15 unidades por receita</SelectItem>
+                <SelectItem value="biweekly">Quinzenal — 14 unidades por receita</SelectItem>
                 <SelectItem value="monthly">Mensal — 28 unidades por receita</SelectItem>
                 <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
