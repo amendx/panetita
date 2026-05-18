@@ -1,0 +1,293 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  deliveryTypeShort,
+  formatBRL,
+  formatDate,
+  paymentMethodLabel,
+  pricingStrategyLabel,
+  recurrenceLabel,
+  statusLabel,
+  unitLabel,
+} from "@/lib/format";
+import { OrderActions } from "./order-actions";
+import { DeliveryRowActions } from "./delivery-row-actions";
+import { PaymentRowActions } from "./payment-row-actions";
+
+export const dynamic = "force-dynamic";
+
+export default async function PedidoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customers(id, name, phone),
+      addresses(id, label, street, number, complement, neighborhood, city, state),
+      order_items(
+        id, quantity, measure_type, measure_unit, unit_price, unit_cost, line_total, line_cost,
+        recipe_size_id, combo_id,
+        recipe_sizes(id, size_label, recipes(name)),
+        combos(id, name)
+      ),
+      deliveries(id, scheduled_date, scheduled_time, status, delivery_type, notes, delivery_items(id, order_item_id, quantity)),
+      payments(id, amount, method, due_date, paid_at, status, notes)
+    `
+    )
+    .eq("id", id)
+    .single();
+
+  if (!order) notFound();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const o = order as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const deliveries = (o.deliveries ?? []).sort((a: any, b: any) =>
+    a.scheduled_date.localeCompare(b.scheduled_date)
+  );
+  const payments = o.payments ?? [];
+  const items = o.order_items ?? [];
+  const customer = o.customers;
+  const address = o.addresses;
+
+  return (
+    <div className="mx-auto max-w-5xl">
+      <Button asChild variant="ghost" size="sm" className="mb-3">
+        <Link href="/pedidos">
+          <ArrowLeft className="h-4 w-4" /> Voltar
+        </Link>
+      </Button>
+      <PageHeader
+        title={`Pedido de ${customer?.name ?? "—"}`}
+        description={`${recurrenceLabel(o.recurrence)} · ${pricingStrategyLabel(o.pricing_strategy)} · ${statusLabel(o.status)}`}
+        actions={<OrderActions orderId={o.id} status={o.status} />}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Total</div>
+            <div className="text-xl font-bold">{formatBRL(Number(o.total_price))}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Custo</div>
+            <div className="text-xl font-bold">{formatBRL(Number(o.total_cost))}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Lucro</div>
+            <div className="text-xl font-bold text-emerald-700">
+              {formatBRL(Number(o.profit))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {address && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">Endereço de entrega</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {address.street}
+            {address.number && `, ${address.number}`}
+            {address.complement && ` — ${address.complement}`}
+            {address.neighborhood && ` · ${address.neighborhood}`}
+            {address.city && ` · ${address.city}/${address.state ?? ""}`}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Itens</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Quantidade</TableHead>
+                <TableHead className="text-right">Preço un.</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {items.map((it: any) => {
+                const name = it.recipe_sizes
+                  ? `${it.recipe_sizes.recipes.name} · ${it.recipe_sizes.size_label}`
+                  : it.combos?.name ?? "—";
+                return (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell>
+                      {it.quantity} {unitLabel(it.measure_unit)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatBRL(Number(it.unit_price))}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {formatBRL(Number(it.line_total))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Entregas</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data da entrega</TableHead>
+                <TableHead>Entrega</TableHead>
+                <TableHead>Itens</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-44 text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {deliveries.map((d: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const itemsText = d.delivery_items
+                  .map((di: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const oi = items.find((x: any) => x.id === di.order_item_id);
+                    const label = oi?.recipe_sizes
+                      ? `${oi.recipe_sizes.recipes.name} ${oi.recipe_sizes.size_label}`
+                      : oi?.combos?.name ?? "—";
+                    return `${di.quantity}× ${label}`;
+                  })
+                  .join(", ");
+                return (
+                  <TableRow key={d.id}>
+                    <TableCell>
+                      {formatDate(d.scheduled_date)}
+                      {d.scheduled_time && ` · ${d.scheduled_time.slice(0, 5)}`}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {deliveryTypeShort(d.delivery_type ?? "uber_99")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{itemsText || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={d.status === "delivered" ? "success" : "secondary"}>
+                        {statusLabel(d.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeliveryRowActions
+                        deliveryId={d.id}
+                        status={d.status}
+                        scheduledDate={d.scheduled_date}
+                        scheduledTime={d.scheduled_time}
+                        deliveryType={d.delivery_type ?? "uber_99"}
+                        notes={d.notes ?? null}
+                        customerName={customer?.name ?? "Cliente"}
+                        addressSummary={
+                          address
+                            ? `${address.street}${address.number ? `, ${address.number}` : ""}`
+                            : undefined
+                        }
+                        itemsText={itemsText}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-base">Pagamentos</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {payments.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">Nenhum pagamento registrado.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-40 text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {payments.map((p: any) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-semibold tabular-nums">
+                      {formatBRL(Number(p.amount))}
+                    </TableCell>
+                    <TableCell>{paymentMethodLabel(p.method)}</TableCell>
+                    <TableCell>{p.due_date ? formatDate(p.due_date) : "—"}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          p.status === "paid"
+                            ? "success"
+                            : p.status === "overdue"
+                            ? "destructive"
+                            : "warning"
+                        }
+                      >
+                        {statusLabel(p.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <PaymentRowActions paymentId={p.id} status={p.status} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {o.notes && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle className="text-base">Observações</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm whitespace-pre-line">{o.notes}</CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
