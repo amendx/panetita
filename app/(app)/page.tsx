@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { formatBRL, formatDate, statusLabel, toISODate } from "@/lib/format";
 import { CalendarDays, Plus, Receipt, ShoppingCart, Truck, Wallet } from "lucide-react";
 
@@ -45,11 +46,9 @@ export default async function DashboardPage() {
         title="Início"
         description="Visão geral dos próximos 14 dias"
         actions={
-          <Button asChild>
-            <Link href="/pedidos/novo">
-              <Plus className="h-4 w-4" /> Novo pedido
-            </Link>
-          </Button>
+          <NavButton href="/pedidos/novo" loaderLabel="Abrindo novo pedido...">
+            <Plus className="h-4 w-4" /> Novo pedido
+          </NavButton>
         }
       />
 

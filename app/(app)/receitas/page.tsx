@@ -3,6 +3,7 @@ import { Plus, ChefHat } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RecipesTable, type RecipeRow } from "./recipes-table";
 
@@ -30,11 +31,9 @@ export default async function ReceitasPage() {
         title="Receitas"
         description="Suas panelinhas e tamanhos disponíveis"
         actions={
-          <Button asChild>
-            <Link href="/receitas/nova">
-              <Plus className="h-4 w-4" /> Nova receita
-            </Link>
-          </Button>
+          <NavButton href="/receitas/nova" loaderLabel="Abrindo nova receita...">
+            <Plus className="h-4 w-4" /> Nova receita
+          </NavButton>
         }
       />
 

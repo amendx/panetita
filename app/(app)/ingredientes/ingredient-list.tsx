@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,9 +22,11 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este ingrediente?")) return;
+    setDeletingId(id);
     try {
       await deleteIngredient(id);
       toast({ title: "Ingrediente excluído" });
@@ -34,6 +36,8 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
         description: e instanceof Error ? e.message : "Tente novamente",
         variant: "destructive",
       });
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -63,30 +67,43 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ingredients.map((i) => (
-                  <TableRow key={i.id}>
-                    <TableCell className="font-medium">{i.name}</TableCell>
-                    <TableCell>{unitLabel(i.unit)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatBRL(Number(i.price_per_unit))} / {unitLabel(i.unit)}
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground sm:table-cell">
-                      {i.notes}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => { setEditing(i); setOpen(true); }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(i.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {ingredients.map((i) => {
+                  const isDeleting = deletingId === i.id;
+                  return (
+                    <TableRow key={i.id} className={isDeleting ? "opacity-50" : ""}>
+                      <TableCell className="font-medium">{i.name}</TableCell>
+                      <TableCell>{unitLabel(i.unit)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatBRL(Number(i.price_per_unit))} / {unitLabel(i.unit)}
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">
+                        {i.notes}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isDeleting}
+                          onClick={() => { setEditing(i); setOpen(true); }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={isDeleting}
+                          onClick={() => handleDelete(i.id)}
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

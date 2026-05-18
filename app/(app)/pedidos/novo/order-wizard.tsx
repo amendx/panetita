@@ -6,6 +6,7 @@ import { Loader2, Plus, Trash2, Receipt, Wallet, TrendingUp, Percent, Truck, Pac
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import {
   comboCost,
   comboCalculatedPrice,
   recipeSizeCost,
+  recipeSizeUnitPriceFor,
   resolveUnitPrice,
 } from "@/lib/pricing";
 import { createOrder, type NewOrderInput } from "../actions";
@@ -54,6 +56,7 @@ interface SizeOption {
   id: string;
   size_label: string;
   fixed_price: number | null;
+  fixed_price_monthly: number | null;
   recipe_id: string;
   recipes: { name: string };
   recipe_size_ingredients: IngredientLine[];
@@ -167,7 +170,7 @@ interface DraftDelivery {
 
 interface DraftPayment {
   key: string;
-  amount: string;
+  amount: number;
   method: PaymentMethod;
   due_date: string;
   status: "pending" | "paid";
@@ -186,7 +189,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
     { key: cryptoId(), date: toISODate(new Date()), time: "", delivery_type: "uber_99", itemQuantities: {} },
   ]);
   const [payments, setPayments] = useState<DraftPayment[]>([
-    { key: cryptoId(), amount: "", method: "pix", due_date: "", status: "pending" },
+    { key: cryptoId(), amount: 0, method: "pix", due_date: "", status: "pending" },
   ]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -229,7 +232,8 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
       const s = data.sizes.find((x) => x.id === refId);
       if (!s) return;
       unitCost = recipeSizeCost(sizeAsRecipe(s));
-      basePrice = s.fixed_price != null ? Number(s.fixed_price) : null;
+      // Mensal usa fixed_price_monthly (com desconto); restante usa o semanal
+      basePrice = recipeSizeUnitPriceFor(s, recurrence);
     } else {
       const c = data.combos.find((x) => x.id === refId);
       if (!c) return;
@@ -290,11 +294,30 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
     setRecurrence(r);
     const base = deliveries[0] ? new Date(deliveries[0].date) : new Date();
 
-    // Atualiza as quantidades de todos os itens (receitas e combos) conforme a nova recorrência.
+    // Atualiza quantidades + preço-base dos itens conforme a nova recorrência.
+    // Receitas: preço-base muda (mensal usa fixed_price_monthly). Combos: mantém.
     const unitsPerOrder = RECURRENCE_UNITS[r];
-    if (unitsPerOrder > 0) {
-      setItems((prev) => prev.map((it) => ({ ...it, quantity: unitsPerOrder })));
-    }
+    setItems((prev) =>
+      prev.map((it) => {
+        let basePrice = it.basePrice;
+        if (it.kind === "size") {
+          const s = data.sizes.find((x) => x.id === it.refId);
+          if (s) basePrice = recipeSizeUnitPriceFor(s, r);
+        }
+        const unit_price = resolveUnitPrice({
+          strategy,
+          basePrice,
+          unitCost: it.unit_cost,
+          marginPct: parseFloat(marginPct) || 0,
+        });
+        return {
+          ...it,
+          quantity: unitsPerOrder > 0 ? unitsPerOrder : it.quantity,
+          basePrice,
+          unit_price,
+        };
+      })
+    );
 
     // Usa o tipo de entrega da entrega já existente (se houver) como default
     const defaultDeliveryType: DeliveryType =
@@ -379,7 +402,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
   function addPayment() {
     setPayments((prev) => [
       ...prev,
-      { key: cryptoId(), amount: "", method: "pix", due_date: "", status: "pending" },
+      { key: cryptoId(), amount: 0, method: "pix", due_date: "", status: "pending" },
     ]);
   }
 
@@ -434,9 +457,9 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
         })),
       })),
       payments: payments
-        .filter((p) => parseFloat(p.amount.replace(",", ".")) > 0)
+        .filter((p) => p.amount > 0)
         .map((p) => ({
-          amount: parseFloat(p.amount.replace(",", ".")),
+          amount: p.amount,
           method: p.method,
           due_date: p.due_date || null,
           paid_at: p.status === "paid" ? new Date().toISOString() : null,
@@ -596,18 +619,35 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
           ) : (
             <div className="space-y-2">
               {items.map((it) => {
+                const combo =
+                  it.kind === "combo" ? data.combos.find((x) => x.id === it.refId) : null;
                 const label =
                   it.kind === "size"
                     ? (() => {
                         const s = data.sizes.find((x) => x.id === it.refId);
                         return s ? `${s.recipes.name} · ${s.size_label}` : "—";
                       })()
-                    : data.combos.find((x) => x.id === it.refId)?.name ?? "—";
+                    : combo?.name ?? "—";
+                const comboComposition = combo
+                  ? combo.combo_items
+                      .map(
+                        (ci) =>
+                          `${ci.recipe_sizes.recipes.name} ${ci.recipe_sizes.size_label}${
+                            ci.quantity > 1 ? ` ×${ci.quantity}` : ""
+                          }`
+                      )
+                      .join(" + ")
+                  : null;
                 return (
                   <div key={it.key} className="rounded-md border p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <div className="font-medium">{label}</div>
+                        {comboComposition && (
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            Contém: {comboComposition}
+                          </div>
+                        )}
                         <Badge variant="outline" className="mt-1">
                           {it.kind === "size" ? "Receita" : "Combo"}
                         </Badge>
@@ -668,15 +708,10 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
                       )}
                       <div>
                         <Label className="text-xs">Preço unitário</Label>
-                        <Input
-                          inputMode="decimal"
+                        <CurrencyInput
                           value={it.unit_price}
                           disabled={strategy === "fixed"}
-                          onChange={(e) =>
-                            updateItem(it.key, {
-                              unit_price: parseFloat(e.target.value.replace(",", ".")) || 0,
-                            })
-                          }
+                          onChange={(v) => updateItem(it.key, { unit_price: v })}
                         />
                       </div>
                     </div>
@@ -752,7 +787,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
                   </div>
 
                   <div className="space-y-3 p-4">
-                    <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+                    <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-[1fr_140px]">
                       <div>
                         <Label className="text-xs">Data da entrega</Label>
                         <Input
@@ -821,13 +856,25 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
                         </div>
                         <div className="space-y-1.5">
                           {items.map((it) => {
+                            const comboHere =
+                              it.kind === "combo"
+                                ? data.combos.find((x) => x.id === it.refId)
+                                : null;
                             const label =
                               it.kind === "size"
                                 ? (() => {
                                     const s = data.sizes.find((x) => x.id === it.refId);
                                     return s ? `${s.recipes.name} · ${s.size_label}` : "—";
                                   })()
-                                : data.combos.find((x) => x.id === it.refId)?.name ?? "—";
+                                : comboHere?.name ?? "—";
+                            const comboCompo = comboHere
+                              ? comboHere.combo_items
+                                  .map(
+                                    (ci) =>
+                                      `${ci.recipe_sizes.recipes.name} ${ci.recipe_sizes.size_label}`
+                                  )
+                                  .join(" + ")
+                              : null;
                             const autoQty = it.quantity / deliveries.length;
                             const currentValue = d.itemQuantities[it.key];
                             return (
@@ -835,7 +882,14 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
                                 key={it.key}
                                 className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40"
                               >
-                                <span className="text-sm">{label}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm">{label}</div>
+                                  {comboCompo && (
+                                    <div className="text-[11px] text-muted-foreground">
+                                      {comboCompo}
+                                    </div>
+                                  )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                   <Input
                                     inputMode="decimal"
@@ -891,7 +945,7 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
               setPayments([
                 {
                   key: cryptoId(),
-                  amount: String(totalPrice.toFixed(2)),
+                  amount: totalPrice,
                   method: "pix",
                   due_date: "",
                   status: "pending",
@@ -920,10 +974,10 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
             {(() => {
               const paid = payments
                 .filter((p) => p.status === "paid")
-                .reduce((a, p) => a + (parseFloat(p.amount.replace(",", ".")) || 0), 0);
+                .reduce((a, p) => a + (p.amount || 0), 0);
               const pending = payments
                 .filter((p) => p.status !== "paid")
-                .reduce((a, p) => a + (parseFloat(p.amount.replace(",", ".")) || 0), 0);
+                .reduce((a, p) => a + (p.amount || 0), 0);
               const registered = paid + pending;
               const diff = totalPrice - registered;
               if (totalPrice > 0 && Math.abs(diff) > 0.01) {
@@ -944,15 +998,14 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <Label className="text-xs">Valor</Label>
-                  <Input
-                    inputMode="decimal"
+                  <CurrencyInput
                     value={p.amount}
-                    onChange={(e) =>
+                    onChange={(v) =>
                       setPayments((prev) =>
-                        prev.map((x) => (x.key === p.key ? { ...x, amount: e.target.value } : x))
+                        prev.map((x) => (x.key === p.key ? { ...x, amount: v } : x))
                       )
                     }
                   />
@@ -1032,11 +1085,27 @@ export function OrderWizard({ data }: { data: OrderWizardData }) {
 
       <Separator />
 
-      <div className="flex justify-end">
-        <Button size="lg" onClick={handleSubmit} disabled={submitting}>
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting ? "Salvando..." : "Criar pedido"}
-        </Button>
+      <div className="flex flex-col items-end gap-1">
+        {(() => {
+          const missing: string[] = [];
+          if (!customerId) missing.push("cliente");
+          if (items.length === 0) missing.push("itens");
+          if (deliveries.length === 0) missing.push("entrega");
+          const canSubmit = missing.length === 0 && !submitting;
+          return (
+            <>
+              <Button size="lg" onClick={handleSubmit} disabled={!canSubmit}>
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Salvando..." : "Criar pedido"}
+              </Button>
+              {missing.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Faltando: {missing.join(", ")}
+                </span>
+              )}
+            </>
+          );
+        })()}
       </div>
     </div>
   );

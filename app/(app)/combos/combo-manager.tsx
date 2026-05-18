@@ -116,6 +116,8 @@ export function ComboManager({ combos, sizes }: { combos: ComboRow[]; sizes: Siz
   const [sizeId, setSizeId] = useState("");
   const [qty, setQty] = useState("1");
   const [addingItem, setAddingItem] = useState(false);
+  const [deletingComboId, setDeletingComboId] = useState<string | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 
   async function handleSaveCombo(input: {
     id?: string;
@@ -130,20 +132,32 @@ export function ComboManager({ combos, sizes }: { combos: ComboRow[]; sizes: Siz
         description: input.description || null,
         discount_pct: parseFloat(input.discount_pct.replace(",", ".")) || 0,
       });
-      toast({ title: "Combo salvo" });
+      toast({ title: input.id ? "Combo atualizado" : "Combo criado" });
       setFormOpen(false);
       setEditing(null);
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao salvar combo",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
     }
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Excluir este combo?")) return;
+    setDeletingComboId(id);
     try {
       await deleteCombo(id);
+      toast({ title: "Combo excluído" });
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao excluir combo",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingComboId(null);
     }
   }
 
@@ -223,8 +237,17 @@ export function ComboManager({ combos, sizes }: { combos: ComboRow[]; sizes: Siz
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={deletingComboId === c.id}
+                      onClick={() => handleDelete(c.id)}
+                    >
+                      {deletingComboId === c.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      )}
                     </Button>
                   </div>
                 </CardHeader>
@@ -261,19 +284,29 @@ export function ComboManager({ combos, sizes }: { combos: ComboRow[]; sizes: Siz
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
+                                disabled={deletingItemId === i.id}
                                 onClick={async () => {
+                                  setDeletingItemId(i.id);
                                   try {
                                     await deleteComboItem(i.id);
+                                    toast({ title: "Item removido" });
                                   } catch (e) {
                                     toast({
-                                      title: "Erro",
-                                      description: String(e),
+                                      title: "Erro ao remover item",
+                                      description:
+                                        e instanceof Error ? e.message : String(e),
                                       variant: "destructive",
                                     });
+                                  } finally {
+                                    setDeletingItemId(null);
                                   }
                                 }}
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                {deletingItemId === i.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                )}
                               </Button>
                             </div>
                           </li>

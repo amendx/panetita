@@ -45,7 +45,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
         id, quantity, measure_type, measure_unit, unit_price, unit_cost, line_total, line_cost,
         recipe_size_id, combo_id,
         recipe_sizes(id, size_label, recipes(name)),
-        combos(id, name)
+        combos(id, name, combo_items(quantity, recipe_sizes(size_label, recipes(name))))
       ),
       deliveries(id, scheduled_date, scheduled_time, status, delivery_type, notes, delivery_items(id, order_item_id, quantity)),
       payments(id, amount, method, due_date, paid_at, status, notes)
@@ -138,9 +138,28 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
                 const name = it.recipe_sizes
                   ? `${it.recipe_sizes.recipes.name} · ${it.recipe_sizes.size_label}`
                   : it.combos?.name ?? "—";
+                const comboCompo: string | null = it.combos?.combo_items?.length
+                  ? it.combos.combo_items
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      .map(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (ci: any) =>
+                          `${ci.recipe_sizes.recipes.name} ${ci.recipe_sizes.size_label}${
+                            ci.quantity > 1 ? ` ×${ci.quantity}` : ""
+                          }`
+                      )
+                      .join(" + ")
+                  : null;
                 return (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{name}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{name}</div>
+                      {comboCompo && (
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          Contém: {comboCompo}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {it.quantity} {unitLabel(it.measure_unit)}
                     </TableCell>

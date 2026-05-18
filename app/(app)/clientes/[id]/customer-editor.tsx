@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Pencil, Plus, Trash2, MapPin, PawPrint, Receipt, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -199,8 +200,13 @@ export function CustomerEditor({
                       if (!confirm(`Excluir pet ${p.name}?`)) return;
                       try {
                         await deletePet({ id: p.id, customer_id: customer.id });
+                        toast({ title: "Pet excluído" });
                       } catch (e) {
-                        toast({ title: "Erro", description: String(e), variant: "destructive" });
+                        toast({
+                          title: "Erro ao excluir pet",
+                          description: e instanceof Error ? e.message : String(e),
+                          variant: "destructive",
+                        });
                       }
                     }}
                   >
@@ -273,8 +279,13 @@ export function CustomerEditor({
                       if (!confirm("Excluir endereço?")) return;
                       try {
                         await deleteAddress({ id: a.id, customer_id: customer.id });
+                        toast({ title: "Endereço excluído" });
                       } catch (e) {
-                        toast({ title: "Erro", description: String(e), variant: "destructive" });
+                        toast({
+                          title: "Erro ao excluir endereço",
+                          description: e instanceof Error ? e.message : String(e),
+                          variant: "destructive",
+                        });
                       }
                     }}
                   >
@@ -292,11 +303,13 @@ export function CustomerEditor({
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <Receipt className="h-5 w-5" /> Pedidos recentes
           </h2>
-          <Button asChild size="sm">
-            <Link href={`/pedidos/novo?cliente=${customer.id}`}>
-              <Plus className="h-4 w-4" /> Novo pedido
-            </Link>
-          </Button>
+          <NavButton
+            href={`/pedidos/novo?cliente=${customer.id}`}
+            size="sm"
+            loaderLabel="Abrindo novo pedido..."
+          >
+            <Plus className="h-4 w-4" /> Novo pedido
+          </NavButton>
         </div>
         {orders.length === 0 ? (
           <Card>
@@ -364,6 +377,7 @@ function PetDialog({
   const [weight, setWeight] = useState(pet?.weight_kg != null ? String(pet.weight_kg) : "");
   const [breed, setBreed] = useState(pet?.breed ?? "");
   const [notes, setNotes] = useState(pet?.notes ?? "");
+  const [saving, setSaving] = useState(false);
 
   // sync when opening
   if (open && pet && name !== pet.name && name === "") {
@@ -374,6 +388,11 @@ function PetDialog({
   }
 
   async function handle() {
+    if (!name.trim()) {
+      toast({ title: "Informe o nome do pet", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
     try {
       await savePet({
         id: pet?.id,
@@ -386,7 +405,13 @@ function PetDialog({
       toast({ title: pet ? "Pet atualizado" : "Pet criado" });
       onOpenChange(false);
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao salvar pet",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -437,10 +462,13 @@ function PetDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={handle}>Salvar</Button>
+          <Button onClick={handle} disabled={saving || !name.trim()}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -470,6 +498,7 @@ function AddressDialog({
     zip: "",
     isDefault: false,
   });
+  const [saving, setSaving] = useState(false);
 
   if (open && address && state.street === "" && address.street !== "") {
     setState({
@@ -486,6 +515,11 @@ function AddressDialog({
   }
 
   async function handle() {
+    if (!state.street.trim()) {
+      toast({ title: "Informe a rua", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
     try {
       await saveAddress({
         id: address?.id,
@@ -500,10 +534,16 @@ function AddressDialog({
         zip: state.zip || null,
         is_default: state.isDefault,
       });
-      toast({ title: "Endereço salvo" });
+      toast({ title: address ? "Endereço atualizado" : "Endereço criado" });
       onOpenChange(false);
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao salvar endereço",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -620,10 +660,13 @@ function AddressDialog({
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={handle}>Salvar</Button>
+          <Button onClick={handle} disabled={saving || !state.street.trim()}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving ? "Salvando..." : "Salvar"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

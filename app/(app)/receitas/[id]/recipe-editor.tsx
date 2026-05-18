@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +67,7 @@ export function RecipeEditor({
 
   const [addingSize, setAddingSize] = useState(false);
   const [newSizeLabel, setNewSizeLabel] = useState("");
-  const [newSizePrice, setNewSizePrice] = useState("");
+  const [newSizePrice, setNewSizePrice] = useState<number>(0);
   const [savingSize, setSavingSize] = useState(false);
   const [savingRecipe, setSavingRecipe] = useState(false);
 
@@ -89,8 +90,13 @@ export function RecipeEditor({
     if (!confirm("Excluir esta receita? Todos os tamanhos e composições serão removidos.")) return;
     try {
       await deleteRecipe(recipe.id);
+      toast({ title: "Receita excluída" });
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao excluir receita",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
     }
   }
 
@@ -100,12 +106,12 @@ export function RecipeEditor({
       await addRecipeSize({
         recipe_id: recipe.id,
         size_label: newSizeLabel,
-        fixed_price: newSizePrice ? parseFloat(newSizePrice.replace(",", ".")) : null,
+        fixed_price: newSizePrice > 0 ? newSizePrice : null,
       });
       toast({ title: "Tamanho adicionado" });
       setAddingSize(false);
       setNewSizeLabel("");
-      setNewSizePrice("");
+      setNewSizePrice(0);
     } catch (e) {
       toast({ title: "Erro", description: String(e), variant: "destructive" });
     } finally {
@@ -117,8 +123,13 @@ export function RecipeEditor({
     if (!confirm("Excluir este tamanho?")) return;
     try {
       await deleteRecipeSize({ id, recipe_id: recipe.id });
+      toast({ title: "Tamanho excluído" });
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao excluir tamanho",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
     }
   }
 
@@ -217,11 +228,10 @@ export function RecipeEditor({
             </div>
             <div>
               <Label>Preço fixo (opcional)</Label>
-              <Input
+              <CurrencyInput
                 value={newSizePrice}
-                onChange={(e) => setNewSizePrice(e.target.value)}
-                placeholder="Deixe vazio para usar margem/cálculo"
-                inputMode="decimal"
+                onChange={setNewSizePrice}
+                placeholder="0,00"
               />
             </div>
           </div>
@@ -259,15 +269,10 @@ function SizeCard({
 }) {
   const { toast } = useToast();
   const [label, setLabel] = useState(size.size_label);
-  const [price, setPrice] = useState(size.fixed_price != null ? String(size.fixed_price) : "");
-  const [margin, setMargin] = useState(() => {
-    if (size.fixed_price != null && Number(size.fixed_price) > 0) {
-      // Calcula margem inicial baseada no preço fixo / custo
-      // (calcula no render abaixo via useEffect-like — aqui só inicia em 60)
-      return "60";
-    }
-    return "60";
-  });
+  const [price, setPrice] = useState<number>(
+    size.fixed_price != null ? Number(size.fixed_price) : 0
+  );
+  const [margin, setMargin] = useState("60");
 
   const [ingredientId, setIngredientId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -296,23 +301,20 @@ function SizeCard({
     setMargin(value);
     const m = parseFloat(value.replace(",", ".")) / 100;
     if (cost > 0 && m < 1 && m >= 0) {
-      const newPrice = cost / (1 - m);
-      setPrice(newPrice.toFixed(2));
+      setPrice(cost / (1 - m));
     }
   }
 
-  function handlePriceChange(value: string) {
-    setPrice(value);
-    const p = parseFloat(value.replace(",", "."));
-    if (cost > 0 && p > 0) {
-      const newMargin = ((p - cost) / p) * 100;
+  function handlePriceChange(newPrice: number) {
+    setPrice(newPrice);
+    if (cost > 0 && newPrice > 0) {
+      const newMargin = ((newPrice - cost) / newPrice) * 100;
       setMargin(newMargin.toFixed(1));
     }
   }
 
   function applySuggestion() {
-    const newPrice = suggestedPrice60;
-    setPrice(newPrice.toFixed(2));
+    setPrice(suggestedPrice60);
     setMargin("60");
   }
 
@@ -323,7 +325,7 @@ function SizeCard({
         id: size.id,
         recipe_id: recipeId,
         size_label: label,
-        fixed_price: price ? parseFloat(price.replace(",", ".")) : null,
+        fixed_price: price > 0 ? price : null,
       });
       toast({ title: "Tamanho atualizado" });
       onCancelEdit();
@@ -356,11 +358,21 @@ function SizeCard({
     }
   }
 
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
   async function handleRemoveIngredient(id: string) {
+    setRemovingId(id);
     try {
       await deleteSizeIngredient({ id, recipe_id: recipeId });
+      toast({ title: "Ingrediente removido" });
     } catch (e) {
-      toast({ title: "Erro", description: String(e), variant: "destructive" });
+      toast({
+        title: "Erro ao remover",
+        description: e instanceof Error ? e.message : String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -413,13 +425,8 @@ function SizeCard({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label>Preço fixo (R$)</Label>
-                <Input
-                  value={price}
-                  onChange={(e) => handlePriceChange(e.target.value)}
-                  placeholder="0,00"
-                  inputMode="decimal"
-                />
+                <Label>Preço fixo</Label>
+                <CurrencyInput value={price} onChange={handlePriceChange} />
               </div>
               <div>
                 <Label>Margem desejada (%)</Label>
@@ -485,9 +492,14 @@ function SizeCard({
                       <Button
                         variant="ghost"
                         size="icon"
+                        disabled={removingId === row.id}
                         onClick={() => handleRemoveIngredient(row.id)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        {removingId === row.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
                       </Button>
                     </TableCell>
                   </TableRow>

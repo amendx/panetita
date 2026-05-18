@@ -2,11 +2,42 @@ import type {
   Ingredient,
   IngredientUnit,
   PricingStrategy,
+  Recurrence,
   RecipeSize,
   RecipeSizeIngredient,
   Combo,
   ComboItem,
 } from "@/types/database";
+
+/**
+ * Devolve o preço unitário cadastrado adequado à recorrência do pedido.
+ * Mensal usa `fixed_price_monthly` (que tem o desconto); o resto usa `fixed_price`.
+ */
+export function recipeSizeUnitPriceFor(
+  size: { fixed_price: number | null; fixed_price_monthly?: number | null },
+  recurrence: Recurrence
+): number | null {
+  if (recurrence === "monthly") {
+    const monthly = size.fixed_price_monthly;
+    if (monthly != null && Number(monthly) > 0) return Number(monthly);
+  }
+  return size.fixed_price != null ? Number(size.fixed_price) : null;
+}
+
+/**
+ * Desconto em % do preço mensal em relação ao semanal (positivo = desconto).
+ * Retorna null se faltar algum dos preços.
+ */
+export function monthlyDiscountPct(size: {
+  fixed_price: number | null;
+  fixed_price_monthly?: number | null;
+}): number | null {
+  const w = size.fixed_price != null ? Number(size.fixed_price) : null;
+  const m =
+    size.fixed_price_monthly != null ? Number(size.fixed_price_monthly) : null;
+  if (w == null || m == null || w <= 0) return null;
+  return ((w - m) / w) * 100;
+}
 
 const TO_BASE: Record<IngredientUnit, { base: "mass" | "volume" | "count"; factor: number }> = {
   g: { base: "mass", factor: 1 },

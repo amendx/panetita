@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,7 @@ export function IngredientForm({
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<IngredientUnit>("kg");
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState<number>(0);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +47,7 @@ export function IngredientForm({
     if (open) {
       setName(ingredient?.name ?? "");
       setUnit((ingredient?.unit as IngredientUnit) ?? "kg");
-      setPrice(ingredient ? String(ingredient.price_per_unit) : "");
+      setPrice(ingredient ? Number(ingredient.price_per_unit) : 0);
       setNotes(ingredient?.notes ?? "");
     }
   }, [open, ingredient]);
@@ -59,7 +60,7 @@ export function IngredientForm({
         id: ingredient?.id,
         name,
         unit,
-        price_per_unit: parseFloat(price.replace(",", ".")) || 0,
+        price_per_unit: price,
         notes: notes || null,
       });
       toast({ title: ingredient ? "Ingrediente atualizado" : "Ingrediente criado" });
@@ -109,16 +110,8 @@ export function IngredientForm({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="price">Preço por unidade (R$)</Label>
-              <Input
-                id="price"
-                type="text"
-                inputMode="decimal"
-                required
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="0,00"
-              />
+              <Label htmlFor="price">Preço por unidade</Label>
+              <CurrencyInput id="price" value={price} onChange={setPrice} />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -134,7 +127,7 @@ export function IngredientForm({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !name.trim()}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? "Salvando..." : "Salvar"}
             </Button>

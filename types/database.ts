@@ -42,7 +42,10 @@ export interface RecipeSize {
   recipe_id: string;
   user_id: string;
   size_label: string;
+  /** Preço unitário no plano semanal (ou avulso) */
   fixed_price: number | null;
+  /** Preço unitário no plano mensal (com desconto). Pode estar ausente em mocks antigos. */
+  fixed_price_monthly?: number | null;
   notes: string | null;
 }
 

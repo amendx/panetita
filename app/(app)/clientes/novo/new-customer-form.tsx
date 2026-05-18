@@ -171,11 +171,14 @@ export function NewCustomerForm() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={submitting} size="lg">
+      <div className="flex flex-col items-end gap-1">
+        <Button type="submit" disabled={submitting || !name.trim()} size="lg">
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
           {submitting ? "Criando..." : "Criar cliente"}
         </Button>
+        {!name.trim() && (
+          <span className="text-xs text-muted-foreground">Informe o nome do cliente</span>
+        )}
       </div>
     </form>
   );

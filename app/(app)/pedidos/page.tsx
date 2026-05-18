@@ -3,6 +3,7 @@ import { Plus, Receipt } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { OrderRow } from "./order-row";
@@ -47,11 +48,9 @@ export default async function PedidosPage() {
       <PageHeader
         title="Pedidos"
         actions={
-          <Button asChild>
-            <Link href="/pedidos/novo">
-              <Plus className="h-4 w-4" /> Novo pedido
-            </Link>
-          </Button>
+          <NavButton href="/pedidos/novo" loaderLabel="Abrindo novo pedido...">
+            <Plus className="h-4 w-4" /> Novo pedido
+          </NavButton>
         }
       />
 

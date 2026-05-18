@@ -3,6 +3,7 @@ import { Plus, PawPrint } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { NavButton } from "@/components/ui/nav-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -20,11 +21,9 @@ export default async function ClientesPage() {
       <PageHeader
         title="Clientes"
         actions={
-          <Button asChild>
-            <Link href="/clientes/novo">
-              <Plus className="h-4 w-4" /> Novo cliente
-            </Link>
-          </Button>
+          <NavButton href="/clientes/novo" loaderLabel="Abrindo novo cliente...">
+            <Plus className="h-4 w-4" /> Novo cliente
+          </NavButton>
         }
       />
 
