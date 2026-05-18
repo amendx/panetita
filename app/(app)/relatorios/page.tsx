@@ -38,15 +38,23 @@ export default async function RelatoriosPage({
   }
 
   const supabase = await createClient();
-  const { data: orders } = await supabase
-    .from("orders")
-    .select(
-      "id, recurrence, total_price, total_cost, profit, created_at, customers(name), payments(amount, status)"
-    )
-    .gte("created_at", toISODate(start))
-    .lte("created_at", toISODate(addDays(end, 1)))
-    .neq("status", "cancelled")
-    .order("created_at", { ascending: false });
+  const [
+    { data: orders },
+    { data: allCustomers },
+    { data: allPets },
+  ] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, recurrence, total_price, total_cost, profit, created_at, customer_id, pet_id, customers(name), pets(name), payments(amount, status)"
+      )
+      .gte("created_at", toISODate(start))
+      .lte("created_at", toISODate(addDays(end, 1)))
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false }),
+    supabase.from("customers").select("id, name, created_at"),
+    supabase.from("pets").select("id, name, weight_kg, customer_id, restrictions"),
+  ]);
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
   function totalsForOrder(o: any) {
@@ -98,6 +106,70 @@ export default async function RelatoriosPage({
     .slice(0, 5);
 
   const paidPct = estimatedRevenue > 0 ? (paidRevenue / estimatedRevenue) * 100 : 0;
+
+  // ====== Estatisticas de tutores e pets ======
+  const totalCustomers = (allCustomers ?? []).length;
+  const totalPets = (allPets ?? []).length;
+
+  // Tutores ativos no período (criaram pedido na janela)
+  const activeCustomerIds = new Set<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activePetIds = new Set<string>();
+  for (const o of orders ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oany = o as any;
+    if (oany.customer_id) activeCustomerIds.add(oany.customer_id);
+    if (oany.pet_id) activePetIds.add(oany.pet_id);
+  }
+  const activeCustomers = activeCustomerIds.size;
+  const activePets = activePetIds.size;
+
+  // Novos tutores no período
+  const startIso = toISODate(start);
+  const endIso = toISODate(addDays(end, 1));
+  const newCustomers = (allCustomers ?? []).filter((c) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const created = (c as any).created_at as string;
+    return created >= startIso && created <= endIso;
+  }).length;
+
+  // Pets por porte (com base em peso)
+  const petsByPorte = { small: 0, medium: 0, large: 0, unknown: 0 };
+  for (const p of allPets ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = Number((p as any).weight_kg ?? 0);
+    if (!w) petsByPorte.unknown++;
+    else if (w < 10) petsByPorte.small++;
+    else if (w < 25) petsByPorte.medium++;
+    else petsByPorte.large++;
+  }
+
+  // Pets com restrição alimentar
+  const petsWithRestriction = (allPets ?? []).filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p) => (p as any).restrictions && (p as any).restrictions.trim().length > 0
+  ).length;
+
+  // Top pets que mais consumiram no período
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const byPet = new Map<string, { petName: string; tutorName: string; revenue: number; orders: number }>();
+  for (const o of orders ?? []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const oany = o as any;
+    if (!oany.pet_id || !oany.pets?.name) continue;
+    const cur = byPet.get(oany.pet_id) ?? {
+      petName: oany.pets.name,
+      tutorName: oany.customers?.name ?? "—",
+      revenue: 0,
+      orders: 0,
+    };
+    cur.revenue += Number(o.total_price);
+    cur.orders += 1;
+    byPet.set(oany.pet_id, cur);
+  }
+  const topPets = Array.from(byPet.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -166,6 +238,84 @@ export default async function RelatoriosPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* CARD TUTORES & PETS */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">🐾 Tutores e pets</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Stats em grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <PetStat label="Tutores cadastrados" value={totalCustomers} />
+            <PetStat label="Pets cadastrados" value={totalPets} />
+            <PetStat
+              label="Tutores ativos no período"
+              value={activeCustomers}
+              hint={
+                totalCustomers > 0
+                  ? `${((activeCustomers / totalCustomers) * 100).toFixed(0)}% do total`
+                  : undefined
+              }
+              tone="success"
+            />
+            <PetStat
+              label="Pets ativos no período"
+              value={activePets}
+              hint={
+                totalPets > 0
+                  ? `${((activePets / totalPets) * 100).toFixed(0)}% do total`
+                  : undefined
+              }
+              tone="success"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <PetStat label="Novos tutores no período" value={newCustomers} tone="primary" />
+            <PetStat
+              label="Com restrição alimentar"
+              value={petsWithRestriction}
+              tone={petsWithRestriction > 0 ? "warning" : undefined}
+              hint="⚠️ pets sensíveis"
+            />
+            <PetStat label="Portes pequenos (<10kg)" value={petsByPorte.small} />
+            <PetStat label="Portes médios+grandes" value={petsByPorte.medium + petsByPorte.large} />
+          </div>
+
+          {topPets.length > 0 && (
+            <div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Top pets do período
+              </div>
+              <div className="overflow-hidden rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Pet</TableHead>
+                      <TableHead>Tutor</TableHead>
+                      <TableHead className="text-right">Pedidos</TableHead>
+                      <TableHead className="text-right">Faturamento</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topPets.map((p, idx) => (
+                      <TableRow key={`${p.petName}-${idx}`}>
+                        <TableCell className="font-medium">🐾 {p.petName}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.tutorName}</TableCell>
+                        <TableCell className="text-right">{p.orders}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatBRL(p.revenue)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {top.length > 0 && (
         <Card className="mt-6">
@@ -246,6 +396,44 @@ export default async function RelatoriosPage({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function PetStat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  tone?: "primary" | "success" | "warning";
+}) {
+  const toneClass =
+    tone === "primary"
+      ? "border-primary/40 bg-primary/5"
+      : tone === "success"
+      ? "border-emerald-300 bg-emerald-50"
+      : tone === "warning"
+      ? "border-amber-300 bg-amber-50"
+      : "bg-card";
+  const valueClass =
+    tone === "primary"
+      ? "text-primary"
+      : tone === "success"
+      ? "text-emerald-700"
+      : tone === "warning"
+      ? "text-amber-700"
+      : "text-foreground";
+  return (
+    <div className={`rounded-lg border p-3 ${toneClass}`}>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className={`mt-1 text-2xl font-bold tabular-nums ${valueClass}`}>{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground">{hint}</div>}
     </div>
   );
 }

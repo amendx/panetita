@@ -491,7 +491,7 @@ function PetDialog({
             </div>
           </div>
           <div>
-            <Label className="flex items-center gap-1.5">
+            <Label className="flex items-center gap-1.5 mb-2">
               ⚠️ Restrições alimentares
             </Label>
             <Textarea

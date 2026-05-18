@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Pencil, Plus, Minus, AlertTriangle, PackageCheck } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Minus, AlertTriangle, PackageCheck, Search, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +41,10 @@ export function StockTable({
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [editValue, setEditValue] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"todos" | "alerta">("todos");
+  const [filter, setFilter] = useState<"todos" | "alerta" | "ok" | "urgent" | "warning" | "empty">(
+    "todos"
+  );
+  const [search, setSearch] = useState("");
 
   function demandFor(horizonKey: string, ingredientId: string): number {
     const lines = demandByHorizon[horizonKey] ?? [];
@@ -100,14 +103,17 @@ export function StockTable({
     }
   }
 
-  // Aplica filtro
+  // Aplica busca + filtro
+  const q = search.trim().toLowerCase();
   const filtered = ingredients.filter((ing) => {
+    if (q && !ing.name.toLowerCase().includes(q)) return false;
     if (filter === "todos") return true;
     const stock = Number(ing.stock_quantity ?? 0);
     const d7 = demandFor("d7", ing.id);
     const d30 = demandFor("d30", ing.id);
     const s = statusFor(stock, d7, d30);
-    return s === "urgent" || s === "warning" || s === "empty";
+    if (filter === "alerta") return s === "urgent" || s === "warning" || s === "empty";
+    return s === filter;
   });
 
   // Contadores de resumo
@@ -147,10 +153,31 @@ export function StockTable({
         <SummaryPill label="Sem estoque" value={counts.empty ?? 0} tone="muted" />
       </div>
 
+      {/* Busca */}
+      <div className="relative mb-3 max-w-md">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar ingrediente no estoque..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+            aria-label="Limpar busca"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Filtros */}
       <div className="mb-3 flex flex-wrap gap-2">
         <FilterChip
-          label="Todos"
+          label={`Todos (${ingredients.length})`}
           active={filter === "todos"}
           onClick={() => setFilter("todos")}
         />
@@ -158,6 +185,26 @@ export function StockTable({
           label={`Precisa repor (${(counts.urgent ?? 0) + (counts.warning ?? 0) + (counts.empty ?? 0)})`}
           active={filter === "alerta"}
           onClick={() => setFilter("alerta")}
+        />
+        <FilterChip
+          label={`🔴 Urgente (${counts.urgent ?? 0})`}
+          active={filter === "urgent"}
+          onClick={() => setFilter("urgent")}
+        />
+        <FilterChip
+          label={`🟡 Repor logo (${counts.warning ?? 0})`}
+          active={filter === "warning"}
+          onClick={() => setFilter("warning")}
+        />
+        <FilterChip
+          label={`🟢 OK (${counts.ok ?? 0})`}
+          active={filter === "ok"}
+          onClick={() => setFilter("ok")}
+        />
+        <FilterChip
+          label={`⚪ Sem estoque (${counts.empty ?? 0})`}
+          active={filter === "empty"}
+          onClick={() => setFilter("empty")}
         />
       </div>
 
