@@ -41,6 +41,15 @@ export default function AjudaPage() {
           </div>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
+              <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>Adicionar/editar pagamentos depois</strong> — no detalhe do pedido,
+                clica em "Adicionar pagamento" pra registrar parcelas que ficaram de fora,
+                ou edita/exclui qualquer pagamento existente. O resumo mostra "já recebido"
+                e "falta cobrar" em tempo real.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
               <span className="mt-0.5 text-base">⚠️</span>
               <span>
                 <strong>Restrições alimentares do pet</strong> — adicione na ficha do pet
@@ -382,6 +391,48 @@ export default function AjudaPage() {
               <ReportMetric label="Lucro estimado" desc="Faturamento estimado − Custo total" />
               <ReportMetric label="Lucro realizado" desc="Lucro apenas de pedidos totalmente pagos" tone="success" />
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* PAGAMENTOS POS-PEDIDO */}
+      <section>
+        <SectionTitle>💰 Gerenciar pagamentos depois</SectionTitle>
+        <Card>
+          <CardContent className="p-6 space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Você não precisa lembrar de todos os pagamentos na hora de criar o pedido.
+              No detalhe do pedido (clique em qualquer pedido em{" "}
+              <Link href="/pedidos" className="text-primary underline">Pedidos</Link>),
+              o painel de Pagamentos mostra:
+            </p>
+            <div className="rounded-md border bg-muted/40 p-3 text-xs">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="font-medium uppercase text-muted-foreground">Total do pedido</div>
+                  <div className="font-bold">R$ 525,00</div>
+                </div>
+                <div>
+                  <div className="font-medium uppercase text-emerald-700">Já recebido</div>
+                  <div className="font-bold text-emerald-700">R$ 200,00</div>
+                </div>
+                <div>
+                  <div className="font-medium uppercase text-amber-700">Falta cobrar</div>
+                  <div className="font-bold text-amber-700">R$ 325,00</div>
+                </div>
+              </div>
+            </div>
+            <p className="text-muted-foreground">Você pode:</p>
+            <ul className="space-y-1.5 text-sm">
+              <Tip><strong>"+ Adicionar pagamento"</strong> — abre form com o valor restante já preenchido (basta escolher método e salvar).</Tip>
+              <Tip><strong>Editar ✏️</strong> qualquer linha — muda valor, método, vencimento, status ou nota.</Tip>
+              <Tip><strong>Excluir 🗑️</strong> um pagamento errado.</Tip>
+              <Tip><strong>Marcar pago ✓</strong> num clique (ou voltar pra pendente).</Tip>
+            </ul>
+            <p className="text-xs text-muted-foreground">
+              💡 Se a soma dos pagamentos não bater com o total do pedido, o sistema
+              mostra aviso em cinza ou amarelo logo abaixo.
+            </p>
           </CardContent>
         </Card>
       </section>

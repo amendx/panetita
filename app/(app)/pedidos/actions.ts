@@ -245,3 +245,65 @@ export async function updatePaymentStatus(input: {
   revalidatePath("/pagamentos");
   revalidatePath("/pedidos");
 }
+
+export async function addPayment(input: {
+  order_id: string;
+  amount: number;
+  method: PaymentMethod;
+  due_date?: string | null;
+  status: "pending" | "paid";
+  notes?: string | null;
+}) {
+  await withUser(async ({ supabase, userId }) => {
+    const { error } = await supabase.from("payments").insert({
+      order_id: input.order_id,
+      user_id: userId,
+      amount: input.amount,
+      method: input.method,
+      due_date: input.due_date ?? null,
+      status: input.status,
+      paid_at: input.status === "paid" ? new Date().toISOString() : null,
+      notes: input.notes ?? null,
+    });
+    if (error) throw error;
+  });
+  revalidatePath("/pagamentos");
+  revalidatePath("/pedidos");
+}
+
+export async function updatePayment(input: {
+  id: string;
+  amount: number;
+  method: PaymentMethod;
+  due_date?: string | null;
+  status: "pending" | "paid";
+  notes?: string | null;
+}) {
+  await withUser(async ({ supabase }) => {
+    const patch: Record<string, unknown> = {
+      amount: input.amount,
+      method: input.method,
+      due_date: input.due_date ?? null,
+      status: input.status,
+      notes: input.notes ?? null,
+    };
+    if (input.status === "paid") {
+      patch.paid_at = new Date().toISOString();
+    } else {
+      patch.paid_at = null;
+    }
+    const { error } = await supabase.from("payments").update(patch).eq("id", input.id);
+    if (error) throw error;
+  });
+  revalidatePath("/pagamentos");
+  revalidatePath("/pedidos");
+}
+
+export async function deletePayment(id: string) {
+  await withUser(async ({ supabase }) => {
+    const { error } = await supabase.from("payments").delete().eq("id", id);
+    if (error) throw error;
+  });
+  revalidatePath("/pagamentos");
+  revalidatePath("/pedidos");
+}

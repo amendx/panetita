@@ -26,7 +26,7 @@ import {
 } from "@/lib/format";
 import { OrderActions } from "./order-actions";
 import { DeliveryRowActions } from "./delivery-row-actions";
-import { PaymentRowActions } from "./payment-row-actions";
+import { PaymentManager } from "./payment-manager";
 import { NotifyTutorButton } from "./notify-tutor-button";
 
 export const dynamic = "force-dynamic";
@@ -300,49 +300,11 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
           <CardTitle className="text-base">Pagamentos</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {payments.length === 0 ? (
-            <p className="p-4 text-sm text-muted-foreground">Nenhum pagamento registrado.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-40 text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {payments.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-semibold tabular-nums">
-                      {formatBRL(Number(p.amount))}
-                    </TableCell>
-                    <TableCell>{paymentMethodLabel(p.method)}</TableCell>
-                    <TableCell>{p.due_date ? formatDate(p.due_date) : "—"}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          p.status === "paid"
-                            ? "success"
-                            : p.status === "overdue"
-                            ? "destructive"
-                            : "warning"
-                        }
-                      >
-                        {statusLabel(p.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <PaymentRowActions paymentId={p.id} status={p.status} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <PaymentManager
+            orderId={o.id}
+            orderTotal={Number(o.total_price)}
+            payments={payments as never[]}
+          />
         </CardContent>
       </Card>
 
