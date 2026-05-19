@@ -46,6 +46,65 @@ export function pctFromCostPrice(
 export const profitModeLabel = (mode: ProfitCalcMode): string =>
   mode === "markup" ? "Markup" : "Margem";
 
+// ============================================================
+// Precificação completa (variável + custo fixo diluido + reserva)
+// ============================================================
+
+export interface FullPricingInput {
+  /** Custo variável (ingredientes) por unidade */
+  variableCost: number;
+  /** Custo fixo diluído por unidade (overhead mensal / produção estimada) */
+  fixedCostPerUnit: number;
+  /** % escolhido pelo usuário (markup ou margem) */
+  pct: number;
+  /** Modo de cálculo da %: markup (sobre custo) ou margin (sobre preço) */
+  mode: ProfitCalcMode;
+  /** % do lucro bruto destinado ao fundo de reserva (ex.: 3) */
+  reservePct: number;
+}
+
+export interface FullPricingOutput {
+  /** Custo total por unidade (variável + fixo) */
+  totalCost: number;
+  /** Preço de venda sugerido */
+  suggestedPrice: number;
+  /** Lucro bruto = preço - custo total */
+  grossProfit: number;
+  /** Reserva = lucro bruto × reserve_pct */
+  reserveAmount: number;
+  /** Lucro líquido = lucro bruto - reserva */
+  netProfit: number;
+  /** % lucro líquido sobre o preço (real "take-home" margin) */
+  netMarginPct: number;
+}
+
+/**
+ * Calcula a precificação completa de uma unidade considerando:
+ *   - custo variável (ingredientes)
+ *   - custo fixo diluído (overhead mensal / produção estimada)
+ *   - markup/margem desejado pelo usuário
+ *   - reserva (% do lucro bruto pra manutenção de equipamento)
+ *
+ * O preço é calculado sobre o CUSTO TOTAL (variável + fixo) para garantir
+ * que os produtos cubram tudo, não apenas o custo de matéria-prima.
+ */
+export function fullPricing(input: FullPricingInput): FullPricingOutput {
+  const totalCost = (input.variableCost || 0) + (input.fixedCostPerUnit || 0);
+  const suggestedPrice = priceFromCostPct(totalCost, input.pct, input.mode);
+  const grossProfit = suggestedPrice - totalCost;
+  const reserveAmount = grossProfit * ((input.reservePct || 0) / 100);
+  const netProfit = grossProfit - reserveAmount;
+  const netMarginPct = suggestedPrice > 0 ? (netProfit / suggestedPrice) * 100 : 0;
+  return {
+    totalCost,
+    suggestedPrice,
+    grossProfit,
+    reserveAmount,
+    netProfit,
+    netMarginPct,
+  };
+}
+
 /**
  * Devolve o preço unitário cadastrado adequado à recorrência do pedido.
  * Mensal usa `fixed_price_monthly` (que tem o desconto); o resto usa `fixed_price`.

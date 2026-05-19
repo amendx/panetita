@@ -41,6 +41,18 @@ export default function AjudaPage() {
           </div>
           <ul className="space-y-2 text-sm">
             <li className="flex items-start gap-2">
+              <Calculator className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              <span>
+                <strong>Custos fixos do negócio na precificação</strong> — em{" "}
+                <Link href="/precificacao" className="text-primary underline">
+                  Precificação
+                </Link>
+                , cadastre Aluguel, Energia, Marketing, MEI + sua produção mensal estimada.
+                O sistema dilui tudo por panelinha e sugere um preço que cobre todo o overhead
+                (não só os ingredientes), separando ainda 3% do lucro como reserva.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
               <Wallet className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
               <span>
                 <strong>Adicionar/editar pagamentos depois</strong> — no detalhe do pedido,
@@ -391,6 +403,59 @@ export default function AjudaPage() {
               <ReportMetric label="Lucro estimado" desc="Faturamento estimado − Custo total" />
               <ReportMetric label="Lucro realizado" desc="Lucro apenas de pedidos totalmente pagos" tone="success" />
             </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* PRECIFICACAO COMPLETA */}
+      <section>
+        <SectionTitle>🏢 Precificação que cobre o negócio inteiro</SectionTitle>
+        <Card>
+          <CardContent className="p-6 space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Em <Link href="/precificacao" className="text-primary underline">Precificação</Link>{" "}
+              você cadastra seus custos fixos mensais. O sistema dilui isso em cada panelinha
+              para que <strong>cada venda contribua com o overhead</strong>, não só pague os ingredientes.
+            </p>
+
+            <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1">
+              <div className="font-medium uppercase text-muted-foreground">
+                Custos mensais cadastrados
+              </div>
+              <div className="flex justify-between">
+                <span>🏢 Aluguel</span><span className="tabular-nums">R$ 1.500</span>
+              </div>
+              <div className="flex justify-between">
+                <span>⚡ Energia</span><span className="tabular-nums">R$ 200</span>
+              </div>
+              <div className="flex justify-between">
+                <span>📣 Marketing Instagram</span><span className="tabular-nums">R$ 100</span>
+              </div>
+              <div className="flex justify-between">
+                <span>🧾 MEI</span><span className="tabular-nums">R$ 70</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-semibold">
+                <span>Total fixo mensal</span><span className="tabular-nums">R$ 1.870</span>
+              </div>
+            </div>
+
+            <FormulaBox>
+              Custo fixo por panelinha = Total fixo mensal ÷ panelinhas/mês estimadas<br />
+              Custo total = Ingredientes + Custo fixo por panelinha<br />
+              Preço = Custo total × markup (ou ÷ (1 − margem))<br />
+              Reserva (3%) = Lucro bruto × 0,03<br />
+              <strong>Lucro líquido = Preço − Custo total − Reserva</strong>
+            </FormulaBox>
+
+            <p className="text-xs text-muted-foreground">
+              💡 No simulador, ligue/desligue o toggle <em>"Incluir custos fixos"</em> pra comparar
+              o preço considerando apenas ingredientes vs. tudo incluído. O preço fixo cadastrado
+              de cada tamanho também aparece com a sobra real depois de descontar o custo total.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              🛟 <strong>Fundo de reserva</strong>: 3% do lucro fica separado pra manutenção/reposição
+              de equipamentos. Configurável.
+            </p>
           </CardContent>
         </Card>
       </section>

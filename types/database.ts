@@ -188,6 +188,19 @@ export interface Payment {
   notes: string | null;
 }
 
+export interface BusinessSettings {
+  id: string;
+  monthly_rent: number;
+  monthly_energy: number;
+  monthly_marketing: number;
+  monthly_mei: number;
+  /** % do lucro bruto destinado ao fundo de reserva (default 3) */
+  reserve_pct: number;
+  /** Estimativa de panelinhas/mês — para diluir o custo fixo */
+  estimated_units_per_month: number;
+  updated_at: string;
+}
+
 type Row<T> = T;
 type Insert<T> = Partial<T> & Record<string, unknown>;
 type Update<T> = Partial<T> & Record<string, unknown>;

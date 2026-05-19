@@ -6,14 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
+  fullPricing,
   pctFromCostPrice,
   priceFromCostPct,
   profitModeLabel,
   recipeSizeCost,
 } from "@/lib/pricing";
 import { formatBRL, unitLabel } from "@/lib/format";
-import type { ProfitCalcMode } from "@/types/database";
+import type { BusinessSettings, ProfitCalcMode } from "@/types/database";
 
 interface SizeRow {
   id: string;
@@ -33,13 +35,19 @@ interface SizeRow {
 export function PricingCalculator({
   sizes,
   profitMode,
+  businessSettings,
+  fixedCostPerUnit,
 }: {
   sizes: SizeRow[];
   profitMode: ProfitCalcMode;
+  businessSettings: BusinessSettings;
+  fixedCostPerUnit: number;
 }) {
   const [sizeId, setSizeId] = useState(sizes[0]?.id ?? "");
   // Default 60% margem ≈ 150% markup. Mantém um número confortável por modo.
   const [pct, setPct] = useState(profitMode === "markup" ? "100" : "60");
+  // Toggle pra incluir/excluir os custos fixos no cálculo
+  const [includeFixed, setIncludeFixed] = useState(fixedCostPerUnit > 0);
 
   const selected = sizes.find((s) => s.id === sizeId) ?? null;
   const modeLabel = profitModeLabel(profitMode);
@@ -75,10 +83,21 @@ export function PricingCalculator({
   }, [selected]);
 
   const pctNumber = parseFloat(pct.replace(",", ".")) || 0;
-  const suggested = priceFromCostPct(cost, pctNumber, profitMode);
   const fixed = selected?.fixed_price != null ? Number(selected.fixed_price) : null;
-  const currentPct =
+  const effectiveFixedPerUnit = includeFixed ? fixedCostPerUnit : 0;
+  const breakdown = fullPricing({
+    variableCost: cost,
+    fixedCostPerUnit: effectiveFixedPerUnit,
+    pct: pctNumber,
+    mode: profitMode,
+    reservePct: includeFixed ? businessSettings.reserve_pct : 0,
+  });
+  // Sem custo fixo (modo legado): preço só sobre custo de ingredientes
+  const simpleSuggested = priceFromCostPct(cost, pctNumber, profitMode);
+  // Avaliação do preço fixo cadastrado vs. o cálculo COMPLETO
+  const fixedCurrentPct =
     fixed != null && fixed > 0 ? pctFromCostPrice(cost, fixed, profitMode) : null;
+  const fixedNetProfit = fixed != null ? fixed - breakdown.totalCost : null;
 
   return (
     <div className="space-y-4">
@@ -149,21 +168,59 @@ export function PricingCalculator({
             </CardContent>
           </Card>
 
+          {/* Toggle pra incluir custos fixos */}
+          {fixedCostPerUnit > 0 && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/30 p-3">
+              <input
+                type="checkbox"
+                checked={includeFixed}
+                onChange={(e) => setIncludeFixed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium">
+                  Incluir custos fixos do negócio ({formatBRL(fixedCostPerUnit)}/un.) + reserva (
+                  {businessSettings.reserve_pct}%)
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Quando ligado, o preço sugerido cobre matéria-prima + aluguel/energia/marketing/MEI
+                  rateados, e ainda separa {businessSettings.reserve_pct}% do lucro para fundo de
+                  reserva.
+                </p>
+              </div>
+            </label>
+          )}
+
+          {/* Cards principais */}
           <div className="grid gap-3 sm:grid-cols-3">
             <Card>
               <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">Custo de fabricação</div>
-                <div className="text-xl font-bold">{formatBRL(cost)}</div>
+                <div className="text-xs text-muted-foreground">Custo total por unidade</div>
+                <div className="text-xl font-bold">{formatBRL(breakdown.totalCost)}</div>
+                {includeFixed && fixedCostPerUnit > 0 && (
+                  <div className="mt-1 text-[11px] text-muted-foreground leading-tight">
+                    {formatBRL(cost)} ingredientes
+                    <br />+ {formatBRL(fixedCostPerUnit)} overhead
+                  </div>
+                )}
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-primary/40 bg-primary/5">
               <CardContent className="p-4">
                 <div className="text-xs text-muted-foreground">
                   Preço sugerido ({pct}% {modeLabel.toLowerCase()})
                 </div>
-                <div className="text-xl font-bold text-primary">{formatBRL(suggested)}</div>
+                <div className="text-xl font-bold text-primary">
+                  {formatBRL(includeFixed ? breakdown.suggestedPrice : simpleSuggested)}
+                </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Lucro: {formatBRL(suggested - cost)}
+                  Lucro líquido:{" "}
+                  <span className="font-medium text-emerald-700">
+                    {formatBRL(includeFixed ? breakdown.netProfit : simpleSuggested - cost)}
+                  </span>
+                  {includeFixed && breakdown.suggestedPrice > 0 && (
+                    <> ({breakdown.netMarginPct.toFixed(1)}%)</>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -173,16 +230,106 @@ export function PricingCalculator({
                 <div className="text-xl font-bold">
                   {fixed != null ? formatBRL(fixed) : "—"}
                 </div>
-                {currentPct != null && (
+                {fixedCurrentPct != null && (
                   <Badge variant="secondary" className="mt-1">
-                    {modeLabel} atual: {currentPct.toFixed(1)}%
+                    {modeLabel} atual: {fixedCurrentPct.toFixed(1)}%
                   </Badge>
+                )}
+                {fixed != null && includeFixed && fixedNetProfit != null && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Sobra após custo total:{" "}
+                    <span
+                      className={
+                        fixedNetProfit >= 0 ? "font-medium text-emerald-700" : "font-medium text-destructive"
+                      }
+                    >
+                      {formatBRL(fixedNetProfit)}
+                    </span>
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
+
+          {/* Breakdown detalhado (apenas quando incluindo custos fixos) */}
+          {includeFixed && breakdown.suggestedPrice > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Detalhamento do preço sugerido</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1.5 text-sm">
+                  <BreakdownRow label="Custo dos ingredientes" value={cost} tone="muted" />
+                  <BreakdownRow
+                    label="Overhead (aluguel + energia + marketing + MEI)"
+                    value={fixedCostPerUnit}
+                    tone="muted"
+                  />
+                  <Separator className="my-1.5" />
+                  <BreakdownRow
+                    label="Custo total por panelinha"
+                    value={breakdown.totalCost}
+                    bold
+                  />
+                  <BreakdownRow label="Lucro bruto" value={breakdown.grossProfit} tone="success" />
+                  <BreakdownRow
+                    label={`Fundo de reserva (${businessSettings.reserve_pct}% do lucro)`}
+                    value={-breakdown.reserveAmount}
+                    tone="warning"
+                    sign
+                  />
+                  <Separator className="my-1.5" />
+                  <BreakdownRow
+                    label="Preço sugerido (cobre tudo + lucro líquido)"
+                    value={breakdown.suggestedPrice}
+                    tone="primary"
+                    bold
+                  />
+                  <BreakdownRow
+                    label="Lucro líquido no seu bolso"
+                    value={breakdown.netProfit}
+                    tone="success"
+                    bold
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+function BreakdownRow({
+  label,
+  value,
+  tone,
+  bold,
+  sign,
+}: {
+  label: string;
+  value: number;
+  tone?: "muted" | "success" | "warning" | "primary";
+  bold?: boolean;
+  /** Mostra o sinal explicitamente (− para reservas) */
+  sign?: boolean;
+}) {
+  const toneClass =
+    tone === "muted"
+      ? "text-muted-foreground"
+      : tone === "success"
+      ? "text-emerald-700"
+      : tone === "warning"
+      ? "text-amber-700"
+      : tone === "primary"
+      ? "text-primary"
+      : "";
+  const display = sign && value < 0 ? `−${formatBRL(Math.abs(value))}` : formatBRL(value);
+  return (
+    <div className={`flex items-center justify-between ${toneClass}`}>
+      <span className={bold ? "font-semibold" : ""}>{label}</span>
+      <span className={`tabular-nums ${bold ? "font-bold" : ""}`}>{display}</span>
     </div>
   );
 }
