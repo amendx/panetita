@@ -21,7 +21,7 @@ export default async function ReceitasPage() {
          id, size_label, fixed_price,
          recipe_size_ingredients(
            id, quantity, unit, ingredient_id,
-           ingredients(id, name, unit, price_per_unit)
+           ingredients(id, name, unit, price_per_unit, loss_pct)
          ),
          combo_items(combo_id, combos(id, name))
        )`

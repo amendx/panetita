@@ -25,7 +25,7 @@ export default async function ReceitaDetailPage({
     supabase
       .from("recipe_sizes")
       .select(
-        "*, recipe_size_ingredients(id, ingredient_id, quantity, unit, ingredients(id, name, unit, price_per_unit))"
+        "*, recipe_size_ingredients(id, ingredient_id, quantity, unit, ingredients(id, name, unit, price_per_unit, loss_pct))"
       )
       .eq("recipe_id", id)
       .order("size_label"),

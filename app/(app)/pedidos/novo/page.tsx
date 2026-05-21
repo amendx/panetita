@@ -23,13 +23,13 @@ export default async function NovoPedidoPage({
     supabase
       .from("recipe_sizes")
       .select(
-        "id, size_label, fixed_price, fixed_price_monthly, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))"
+        "id, size_label, fixed_price, fixed_price_monthly, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct))"
       )
       .order("size_label"),
     supabase
       .from("combos")
       .select(
-        "id, name, fixed_price, discount_pct, combo_items(id, quantity, recipe_size_id, recipe_sizes(id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))))"
+        "id, name, fixed_price, discount_pct, combo_items(id, quantity, recipe_size_id, recipe_sizes(id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct))))"
       )
       .order("name"),
     getProfitCalcMode(),

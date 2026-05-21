@@ -14,7 +14,7 @@ export default async function PrecificacaoPage() {
     supabase
       .from("recipe_sizes")
       .select(
-        "id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))"
+        "id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct))"
       )
       .order("size_label"),
     getProfitCalcMode(),

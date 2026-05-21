@@ -168,6 +168,7 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                   <TableHead>Nome</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead className="text-right">Preço</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Perda</TableHead>
                   <TableHead className="hidden text-right sm:table-cell">Estoque</TableHead>
                   <TableHead className="hidden md:table-cell">Observações</TableHead>
                   <TableHead className="w-24"></TableHead>
@@ -178,6 +179,7 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                   const isDeleting = deletingId === i.id;
                   const noPrice = Number(i.price_per_unit ?? 0) === 0;
                   const stock = Number(i.stock_quantity ?? 0);
+                  const loss = Number(i.loss_pct ?? 0);
                   return (
                     <TableRow key={i.id} className={isDeleting ? "opacity-50" : ""}>
                       <TableCell className="font-medium">{i.name}</TableCell>
@@ -189,6 +191,19 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                           <>
                             {formatBRL(Number(i.price_per_unit))} / {unitLabel(i.unit)}
                           </>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden text-right text-sm sm:table-cell">
+                        {loss > 0 ? (
+                          <span className="text-amber-700 tabular-nums" title="Perda no preparo">
+                            📉 +{loss.toFixed(loss % 1 === 0 ? 0 : 1)}%
+                          </span>
+                        ) : loss < 0 ? (
+                          <span className="text-emerald-700 tabular-nums" title="Ganho no preparo">
+                            📈 {loss.toFixed(loss % 1 === 0 ? 0 : 1)}%
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell className="hidden text-right text-sm sm:table-cell">

@@ -158,6 +158,23 @@ export function convertQuantity(
   return (quantity * from.factor) / to.factor;
 }
 
+/**
+ * Fator multiplicador de perda/ganho no preparo.
+ *   - Positivo  = perda  (precisa comprar a mais)  loss_pct=30 → 1.30
+ *   - Negativo  = ganho  (compra menos pq rende)   loss_pct=−50 → 0.50
+ *   - Zero/null = sem ajuste                       → 1.00
+ * Limita a 0.01 pra evitar divisão por zero ou fator absurdo.
+ */
+export function lossFactor(ingredient: Pick<Ingredient, "loss_pct">): number {
+  const pct = Number(ingredient?.loss_pct ?? 0);
+  if (!Number.isFinite(pct) || pct === 0) return 1;
+  return Math.max(0.01, 1 + pct / 100);
+}
+
+/**
+ * Quanto custa usar `quantity` de um ingrediente na receita, JÁ
+ * considerando a % de perda — pra cobrir descongelamento/cocção/aparas.
+ */
 export function ingredientLineCost(
   ingredient: Ingredient,
   quantity: number,
@@ -165,7 +182,7 @@ export function ingredientLineCost(
 ): number {
   const converted = convertQuantity(quantity, unit, ingredient.unit);
   if (!Number.isFinite(converted)) return 0;
-  return converted * (ingredient.price_per_unit ?? 0);
+  return converted * (ingredient.price_per_unit ?? 0) * lossFactor(ingredient);
 }
 
 export interface RecipeSizeWithIngredients extends RecipeSize {

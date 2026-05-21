@@ -49,9 +49,9 @@ export default async function ComprasPage({
       `id, scheduled_date,
        delivery_items(quantity, order_items(
          recipe_sizes(id, size_label, recipe_id, recipes(name),
-         recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))),
+         recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct))),
          combos(id, combo_items(quantity, recipe_sizes(id, size_label, recipe_id, recipes(name),
-           recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit)))))
+           recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct)))))
        ))`
     )
     .gte("scheduled_date", toISODate(start))
@@ -151,29 +151,49 @@ export default async function ComprasPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {enriched.map((l) => (
-                    <TableRow key={l.ingredient.id}>
-                      <TableCell className="font-medium">{l.ingredient.name}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {l.totalQuantity.toFixed(2)} {unitLabel(l.unit)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {l.stock.toFixed(2)} {unitLabel(l.unit)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {l.toBuy > 0 ? (
-                          <span className="font-semibold tabular-nums text-destructive">
-                            {l.toBuy.toFixed(2)} {unitLabel(l.unit)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-emerald-700">tem estoque</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {l.toBuy > 0 ? formatBRL(l.buyCost) : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {enriched.map((l) => {
+                    const loss = Number(l.ingredient.loss_pct ?? 0);
+                    return (
+                      <TableRow key={l.ingredient.id}>
+                        <TableCell className="font-medium">
+                          {l.ingredient.name}
+                          {loss > 0 && (
+                            <span className="ml-1 text-[10px] text-amber-700">
+                              (📉 +{loss.toFixed(loss % 1 === 0 ? 0 : 1)}% perda)
+                            </span>
+                          )}
+                          {loss < 0 && (
+                            <span className="ml-1 text-[10px] text-emerald-700">
+                              (📈 {loss.toFixed(loss % 1 === 0 ? 0 : 1)}% ganho)
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {l.totalQuantity.toFixed(2)} {unitLabel(l.unit)}
+                          {loss !== 0 && (
+                            <div className="text-[10px] text-muted-foreground">
+                              p/ render: {l.totalQuantityNet.toFixed(2)} {unitLabel(l.unit)}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {l.stock.toFixed(2)} {unitLabel(l.unit)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {l.toBuy > 0 ? (
+                            <span className="font-semibold tabular-nums text-destructive">
+                              {l.toBuy.toFixed(2)} {unitLabel(l.unit)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-emerald-700">tem estoque</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {l.toBuy > 0 ? formatBRL(l.buyCost) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
                 <TableFooter>
                   <TableRow>
@@ -217,6 +237,7 @@ function convertSize(s: any) {
         name: r.ingredients.name,
         unit: r.ingredients.unit,
         price_per_unit: r.ingredients.price_per_unit,
+        loss_pct: Number(r.ingredients.loss_pct ?? 0),
         stock_quantity: 0,
         notes: null,
         created_at: "",

@@ -28,7 +28,7 @@ interface SizeRow {
     quantity: number;
     unit: string;
     ingredient_id: string;
-    ingredients: { id: string; name: string; unit: string; price_per_unit: number };
+    ingredients: { id: string; name: string; unit: string; price_per_unit: number; loss_pct?: number | null };
   }>;
 }
 
@@ -74,6 +74,7 @@ export function PricingCalculator({
           name: r.ingredients.name,
           unit: r.ingredients.unit as never,
           price_per_unit: r.ingredients.price_per_unit,
+        loss_pct: Number(r.ingredients.loss_pct ?? 0),
           stock_quantity: 0,
           notes: null,
           created_at: "",

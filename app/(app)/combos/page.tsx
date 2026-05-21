@@ -11,7 +11,7 @@ export default async function CombosPage() {
     supabase
       .from("combos")
       .select(
-        "*, combo_items(id, recipe_size_id, quantity, recipe_sizes(id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit))))"
+        "*, combo_items(id, recipe_size_id, quantity, recipe_sizes(id, size_label, fixed_price, recipe_id, recipes(name), recipe_size_ingredients(id, quantity, unit, ingredient_id, ingredients(id, name, unit, price_per_unit, loss_pct))))"
       )
       .order("name"),
     supabase

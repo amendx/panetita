@@ -497,9 +497,23 @@ function SizeCard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {size.recipe_size_ingredients.map((row) => (
+                {size.recipe_size_ingredients.map((row) => {
+                  const loss = Number(row.ingredients.loss_pct ?? 0);
+                  return (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.ingredients.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {row.ingredients.name}
+                      {loss > 0 && (
+                        <span className="ml-1 text-[10px] text-amber-700">
+                          (📉 +{loss.toFixed(loss % 1 === 0 ? 0 : 1)}% perda)
+                        </span>
+                      )}
+                      {loss < 0 && (
+                        <span className="ml-1 text-[10px] text-emerald-700">
+                          (📈 {loss.toFixed(loss % 1 === 0 ? 0 : 1)}% ganho)
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {row.quantity} {unitLabel(row.unit)}
                     </TableCell>
@@ -521,7 +535,8 @@ function SizeCard({
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}

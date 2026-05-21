@@ -32,6 +32,8 @@ export interface Ingredient {
   unit: IngredientUnit;
   price_per_unit: number;
   stock_quantity: number;
+  /** % de perda (cocção, descongelamento, descarte). Ex: 30 = preciso comprar 30% a mais */
+  loss_pct: number;
   notes: string | null;
   created_at: string;
 }

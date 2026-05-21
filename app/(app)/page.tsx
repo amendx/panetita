@@ -68,10 +68,10 @@ export default async function DashboardPage() {
          delivery_items(quantity, order_items(
            recipe_sizes(id, size_label, recipe_id, recipes(name),
              recipe_size_ingredients(id, quantity, unit, ingredient_id,
-               ingredients(id, name, unit, price_per_unit))),
+               ingredients(id, name, unit, price_per_unit, loss_pct))),
            combos(id, combo_items(quantity, recipe_sizes(id, size_label, recipe_id, recipes(name),
              recipe_size_ingredients(id, quantity, unit, ingredient_id,
-               ingredients(id, name, unit, price_per_unit))))))
+               ingredients(id, name, unit, price_per_unit, loss_pct))))))
          )`
       )
       .gte("scheduled_date", toISODate(today))
@@ -105,6 +105,7 @@ export default async function DashboardPage() {
           name: r.ingredients.name,
           unit: r.ingredients.unit,
           price_per_unit: Number(r.ingredients.price_per_unit),
+        loss_pct: Number(r.ingredients.loss_pct ?? 0),
           stock_quantity: 0,
           notes: null,
           created_at: "",

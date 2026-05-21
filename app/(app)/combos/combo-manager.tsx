@@ -46,7 +46,7 @@ interface ComboItemRow {
       quantity: number;
       unit: string;
       ingredient_id: string;
-      ingredients: { id: string; name: string; unit: string; price_per_unit: number };
+      ingredients: { id: string; name: string; unit: string; price_per_unit: number; loss_pct?: number | null };
     }>;
   };
 }
@@ -98,6 +98,7 @@ function toWithItems(c: ComboRow): ComboWithItems {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             unit: r.ingredients.unit as any,
             price_per_unit: Number(r.ingredients.price_per_unit),
+        loss_pct: Number(r.ingredients.loss_pct ?? 0),
             stock_quantity: 0,
             notes: null,
             created_at: "",

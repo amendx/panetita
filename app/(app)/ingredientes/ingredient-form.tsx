@@ -40,6 +40,7 @@ export function IngredientForm({
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<IngredientUnit>("kg");
   const [price, setPrice] = useState<number>(0);
+  const [lossPct, setLossPct] = useState("0");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -48,6 +49,7 @@ export function IngredientForm({
       setName(ingredient?.name ?? "");
       setUnit((ingredient?.unit as IngredientUnit) ?? "kg");
       setPrice(ingredient ? Number(ingredient.price_per_unit) : 0);
+      setLossPct(ingredient ? String(ingredient.loss_pct ?? 0) : "0");
       setNotes(ingredient?.notes ?? "");
     }
   }, [open, ingredient]);
@@ -61,6 +63,7 @@ export function IngredientForm({
         name,
         unit,
         price_per_unit: price,
+        loss_pct: parseFloat(lossPct.replace(",", ".")) || 0,
         notes: notes || null,
       });
       toast({ title: ingredient ? "Ingrediente atualizado" : "Ingrediente criado" });
@@ -113,6 +116,28 @@ export function IngredientForm({
               <Label htmlFor="price">Preço por unidade</Label>
               <CurrencyInput id="price" value={price} onChange={setPrice} />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="loss" className="flex items-center gap-1.5">
+              📉 % de perda / 📈 ganho no preparo
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="loss"
+                inputMode="decimal"
+                value={lossPct}
+                onChange={(e) => setLossPct(e.target.value)}
+                placeholder="0"
+              />
+              <span className="text-sm text-muted-foreground">%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ajuste do peso entre o que você compra (cru) e o que vai pro prato.
+              <br />• <strong>Perda</strong>: use positivo. Ex.: frango <strong>+30%</strong>
+              {" "}— pra usar 100g, compra 130g.
+              <br />• <strong>Ganho</strong>: use negativo. Ex.: arroz <strong>−50%</strong>
+              {" "}— 500g crus viram 1kg cozido.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="notes">Observações</Label>

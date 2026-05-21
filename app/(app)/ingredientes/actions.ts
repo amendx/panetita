@@ -10,6 +10,7 @@ interface IngredientInput {
   unit: IngredientUnit;
   price_per_unit: number;
   stock_quantity?: number;
+  loss_pct?: number;
   notes?: string | null;
 }
 
@@ -19,6 +20,7 @@ export async function saveIngredient(input: IngredientInput) {
       name: input.name,
       unit: input.unit,
       price_per_unit: input.price_per_unit,
+      loss_pct: input.loss_pct ?? 0,
       notes: input.notes ?? null,
       user_id: userId,
     };
