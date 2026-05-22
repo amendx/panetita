@@ -182,7 +182,15 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                   const loss = Number(i.loss_pct ?? 0);
                   const hasNotes = !!i.notes && i.notes.trim().length > 0;
                   return (
-                    <TableRow key={i.id} className={isDeleting ? "opacity-50" : ""}>
+                    <TableRow
+                      key={i.id}
+                      className={`cursor-pointer ${isDeleting ? "opacity-50" : ""}`}
+                      onClick={() => {
+                        if (isDeleting) return;
+                        setEditing(i);
+                        setOpen(true);
+                      }}
+                    >
                       <TableCell className="py-2 font-medium">{i.name}</TableCell>
                       <TableCell className="py-2">{unitLabel(i.unit)}</TableCell>
                       <TableCell className="py-2 text-right tabular-nums">
@@ -232,14 +240,18 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-2 text-right">
+                      <TableCell
+                        className="py-2 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
                             disabled={isDeleting}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditing(i);
                               setOpen(true);
                             }}
@@ -251,7 +263,10 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                             size="icon"
                             className="h-8 w-8"
                             disabled={isDeleting}
-                            onClick={() => handleDelete(i.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(i.id);
+                            }}
                           >
                             {isDeleting ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
