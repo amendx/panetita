@@ -504,13 +504,19 @@ function SizeCard({
                     <TableCell className="font-medium">
                       {row.ingredients.name}
                       {loss > 0 && (
-                        <span className="ml-1 text-[10px] text-amber-700">
-                          (📉 +{loss.toFixed(loss % 1 === 0 ? 0 : 1)}% perda)
+                        <span
+                          className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900"
+                          title={`Perde ${loss.toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
+                        >
+                          📉 Perda
                         </span>
                       )}
                       {loss < 0 && (
-                        <span className="ml-1 text-[10px] text-emerald-700">
-                          (📈 {loss.toFixed(loss % 1 === 0 ? 0 : 1)}% ganho)
+                        <span
+                          className="ml-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900"
+                          title={`Rende ${Math.abs(loss).toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
+                        >
+                          📈 Ganho
                         </span>
                       )}
                     </TableCell>

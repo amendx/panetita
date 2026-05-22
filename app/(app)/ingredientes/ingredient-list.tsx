@@ -195,12 +195,18 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                       </TableCell>
                       <TableCell className="hidden text-right text-sm sm:table-cell">
                         {loss > 0 ? (
-                          <span className="text-amber-700 tabular-nums" title="Perda no preparo">
-                            📉 +{loss.toFixed(loss % 1 === 0 ? 0 : 1)}%
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900"
+                            title={`Perde ${loss.toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
+                          >
+                            📉 Perda
                           </span>
                         ) : loss < 0 ? (
-                          <span className="text-emerald-700 tabular-nums" title="Ganho no preparo">
-                            📈 {loss.toFixed(loss % 1 === 0 ? 0 : 1)}%
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-900"
+                            title={`Rende ${Math.abs(loss).toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
+                          >
+                            📈 Ganho
                           </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>

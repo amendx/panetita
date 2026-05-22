@@ -40,7 +40,8 @@ export function IngredientForm({
   const [name, setName] = useState("");
   const [unit, setUnit] = useState<IngredientUnit>("kg");
   const [price, setPrice] = useState<number>(0);
-  const [lossPct, setLossPct] = useState("0");
+  const [lossKind, setLossKind] = useState<"none" | "loss" | "gain">("none");
+  const [lossAbs, setLossAbs] = useState("0");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -49,7 +50,17 @@ export function IngredientForm({
       setName(ingredient?.name ?? "");
       setUnit((ingredient?.unit as IngredientUnit) ?? "kg");
       setPrice(ingredient ? Number(ingredient.price_per_unit) : 0);
-      setLossPct(ingredient ? String(ingredient.loss_pct ?? 0) : "0");
+      const initial = Number(ingredient?.loss_pct ?? 0);
+      if (initial > 0) {
+        setLossKind("loss");
+        setLossAbs(String(initial));
+      } else if (initial < 0) {
+        setLossKind("gain");
+        setLossAbs(String(Math.abs(initial)));
+      } else {
+        setLossKind("none");
+        setLossAbs("0");
+      }
       setNotes(ingredient?.notes ?? "");
     }
   }, [open, ingredient]);
@@ -58,12 +69,15 @@ export function IngredientForm({
     e.preventDefault();
     setSaving(true);
     try {
+      const absValue = Math.abs(parseFloat(lossAbs.replace(",", ".")) || 0);
+      const signedLoss =
+        lossKind === "loss" ? absValue : lossKind === "gain" ? -absValue : 0;
       await saveIngredient({
         id: ingredient?.id,
         name,
         unit,
         price_per_unit: price,
-        loss_pct: parseFloat(lossPct.replace(",", ".")) || 0,
+        loss_pct: signedLoss,
         notes: notes || null,
       });
       toast({ title: ingredient ? "Ingrediente atualizado" : "Ingrediente criado" });
@@ -117,27 +131,63 @@ export function IngredientForm({
               <CurrencyInput id="price" value={price} onChange={setPrice} />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="loss" className="flex items-center gap-1.5">
-              📉 % de perda / 📈 ganho no preparo
-            </Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="loss"
-                inputMode="decimal"
-                value={lossPct}
-                onChange={(e) => setLossPct(e.target.value)}
-                placeholder="0"
+          <div className="space-y-2">
+            <Label>Comportamento no preparo</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <KindButton
+                active={lossKind === "none"}
+                onClick={() => setLossKind("none")}
+                icon="⚪"
+                label="Não muda"
               />
-              <span className="text-sm text-muted-foreground">%</span>
+              <KindButton
+                active={lossKind === "loss"}
+                onClick={() => setLossKind("loss")}
+                icon="📉"
+                label="Perde"
+                tone="warning"
+              />
+              <KindButton
+                active={lossKind === "gain"}
+                onClick={() => setLossKind("gain")}
+                icon="📈"
+                label="Rende mais"
+                tone="success"
+              />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ajuste do peso entre o que você compra (cru) e o que vai pro prato.
-              <br />• <strong>Perda</strong>: use positivo. Ex.: frango <strong>+30%</strong>
-              {" "}— pra usar 100g, compra 130g.
-              <br />• <strong>Ganho</strong>: use negativo. Ex.: arroz <strong>−50%</strong>
-              {" "}— 500g crus viram 1kg cozido.
-            </p>
+
+            {lossKind !== "none" && (
+              <div>
+                <Label htmlFor="loss-abs" className="text-xs">
+                  Quanto?
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="loss-abs"
+                    inputMode="decimal"
+                    value={lossAbs}
+                    onChange={(e) =>
+                      setLossAbs(e.target.value.replace(/-/g, ""))
+                    }
+                    placeholder="30"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {lossKind === "loss" ? (
+                    <>
+                      💡 Ex.: frango <strong>perde 30%</strong> — pra usar 100g na receita,
+                      compra 130g.
+                    </>
+                  ) : (
+                    <>
+                      💡 Ex.: arroz <strong>rende 50%</strong> — 500g crus viram 1kg
+                      cozido.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="notes">Observações</Label>
@@ -160,5 +210,44 @@ export function IngredientForm({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function KindButton({
+  active,
+  onClick,
+  icon,
+  label,
+  tone,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: string;
+  label: string;
+  tone?: "warning" | "success";
+}) {
+  const inactiveTone =
+    tone === "warning"
+      ? "hover:border-amber-300 hover:bg-amber-50"
+      : tone === "success"
+      ? "hover:border-emerald-300 hover:bg-emerald-50"
+      : "hover:border-primary/40";
+  const activeTone =
+    tone === "warning"
+      ? "border-amber-400 bg-amber-100/70 text-amber-900"
+      : tone === "success"
+      ? "border-emerald-400 bg-emerald-100/70 text-emerald-900"
+      : "border-primary bg-primary/10 text-primary";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-center gap-1 rounded-md border-2 p-2 text-xs font-medium transition-colors ${
+        active ? activeTone : `border-border bg-card ${inactiveTone}`
+      }`}
+    >
+      <span className="text-base">{icon}</span>
+      <span>{label}</span>
+    </button>
   );
 }

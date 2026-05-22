@@ -424,25 +424,26 @@ export default function AjudaPage() {
             <p className="text-muted-foreground">
               Cada ingrediente em{" "}
               <Link href="/ingredientes" className="text-primary underline">Ingredientes</Link>{" "}
-              tem um campo <strong>"% de perda / ganho"</strong>. Use quando o peso do
-              ingrediente <strong>muda</strong> entre o cru e o pronto.
+              tem o campo <strong>"Comportamento no preparo"</strong>: 3 botões — <strong>Não
+              muda</strong>, <strong>📉 Perde</strong> ou <strong>📈 Rende mais</strong>. Depois
+              só diz <em>quanto %</em> (sempre positivo, sem sinal).
             </p>
             <FormulaBox>
-              Quantidade a comprar = quantidade da receita × (1 + ajuste%/100)<br />
+              Quantidade a comprar = quantidade da receita × fator de ajuste<br />
               Custo real = preço × Quantidade a comprar
             </FormulaBox>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-amber-300 bg-amber-50/60 p-3 text-xs space-y-1">
-                <div className="font-bold text-amber-900">📉 Perda (positivo)</div>
-                <div>Frango a R$ 10/kg, <strong>perda 30%</strong></div>
+                <div className="font-bold text-amber-900">📉 Perde no preparo</div>
+                <div>Frango a R$ 10/kg, perde 30%</div>
                 <div>Receita usa 100g (no prato)</div>
                 <div className="mt-1">
                   ➜ Comprar 130g, custo <strong>R$ 1,30</strong>
                 </div>
               </div>
               <div className="rounded-md border border-emerald-300 bg-emerald-50/60 p-3 text-xs space-y-1">
-                <div className="font-bold text-emerald-900">📈 Ganho (negativo)</div>
-                <div>Arroz a R$ 8/kg, <strong>ganho 50% (digite −50)</strong></div>
+                <div className="font-bold text-emerald-900">📈 Rende mais</div>
+                <div>Arroz a R$ 8/kg, rende 50%</div>
                 <div>Receita usa 1kg cozido</div>
                 <div className="mt-1">
                   ➜ Comprar 500g cru, custo <strong>R$ 4,00</strong>
@@ -450,8 +451,16 @@ export default function AjudaPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              💡 No card de ingredientes da receita aparece "📉 +30% perda" ou "📈 −50% ganho"
-              ao lado do nome.
+              💡 Em listas/cards aparece só uma etiqueta colorida{" "}
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-900">
+                📉 Perda
+              </span>{" "}
+              ou{" "}
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-emerald-900">
+                📈 Ganho
+              </span>{" "}
+              — o % real fica no <strong>modal</strong> de edição do ingrediente. Passa o mouse
+              em cima da etiqueta pra ver o número.
             </p>
           </CardContent>
         </Card>
