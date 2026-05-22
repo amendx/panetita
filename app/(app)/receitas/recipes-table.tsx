@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Eye, MoreVertical, Pencil, Search, Trash2, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -22,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
+import { isRedirectError } from "@/lib/is-redirect-error";
 import { formatBRL } from "@/lib/format";
 import {
   pctFromCostPrice,
@@ -36,6 +39,8 @@ export interface RecipeRow {
   id: string;
   name: string;
   description: string | null;
+  pet_id: string | null;
+  pets: { id: string; name: string; customers: { name: string } | null } | null;
   recipe_sizes: Array<{
     id: string;
     size_label: string;
@@ -109,6 +114,8 @@ function avgPct(sizes: RecipeRow["recipe_sizes"], mode: ProfitCalcMode): number 
   return pcts.reduce((a, b) => a + b, 0) / pcts.length;
 }
 
+type RecipeFilter = "all" | "custom" | "generic";
+
 export function RecipesTable({
   recipes,
   profitMode,
@@ -119,9 +126,35 @@ export function RecipesTable({
   const router = useRouter();
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<RecipeFilter>("all");
   const modeLabel = profitModeLabel(profitMode);
   // Markup pode passar de 100%; margem fica entre 0 e 100. Ajusta os limiares.
   const thresholds = profitMode === "markup" ? { good: 100, ok: 50 } : { good: 50, ok: 30 };
+
+  const counts = useMemo(
+    () => ({
+      custom: recipes.filter((r) => !!r.pet_id).length,
+      generic: recipes.filter((r) => !r.pet_id).length,
+    }),
+    [recipes]
+  );
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return recipes.filter((r) => {
+      if (filter === "custom" && !r.pet_id) return false;
+      if (filter === "generic" && r.pet_id) return false;
+      if (!q) return true;
+      const haystacks = [
+        r.name,
+        r.description ?? "",
+        r.pets?.name ?? "",
+        r.pets?.customers?.name ?? "",
+      ];
+      return haystacks.some((h) => h.toLowerCase().includes(q));
+    });
+  }, [recipes, search, filter]);
 
   async function handleDelete(id: string, name: string, comboNames: string[]) {
     if (comboNames.length > 0) {
@@ -139,14 +172,61 @@ export function RecipesTable({
       await deleteRecipe(id);
       toast({ title: "Receita excluída" });
     } catch (e) {
+      if (isRedirectError(e)) throw e;
       toast({ title: "Erro ao excluir", description: String(e), variant: "destructive" });
       setDeletingId(null);
     }
   }
 
   return (
-    <Card>
-      <CardContent className="p-0">
+    <>
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar receita, pet ou tutor..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 pr-9"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+              aria-label="Limpar busca"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <FilterChip
+          label={`Todas (${recipes.length})`}
+          active={filter === "all"}
+          onClick={() => setFilter("all")}
+        />
+        <FilterChip
+          label={`Sob medida (${counts.custom})`}
+          active={filter === "custom"}
+          onClick={() => setFilter("custom")}
+        />
+        <FilterChip
+          label={`Genéricas (${counts.generic})`}
+          active={filter === "generic"}
+          onClick={() => setFilter("generic")}
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <p className="p-8 text-center text-sm text-muted-foreground">
+              Nenhuma receita bate com a busca/filtros.
+            </p>
+          ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -160,7 +240,7 @@ export function RecipesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {recipes.map((r) => {
+            {filtered.map((r) => {
               const sizes = r.recipe_sizes ?? [];
               const costs = sizes.map((s) => recipeSizeCost(sizeWithIngredients(s)));
               const prices = sizes
@@ -189,7 +269,17 @@ export function RecipesTable({
                   onClick={() => router.push(`/receitas/${r.id}`)}
                 >
                   <TableCell>
-                    <div className="font-medium">{r.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{r.name}</span>
+                      {r.pets && (
+                        <span
+                          className="inline-flex items-center rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-900"
+                          title={`Sob medida pra ${r.pets.name}${r.pets.customers?.name ? ` (${r.pets.customers.name})` : ""}`}
+                        >
+                          🎯 {r.pets.name}
+                        </span>
+                      )}
+                    </div>
                     {r.description && (
                       <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                         {r.description}
@@ -260,7 +350,34 @@ export function RecipesTable({
             })}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+        active
+          ? "bg-primary text-primary-foreground"
+          : "bg-muted text-foreground hover:bg-muted/80"
+      )}
+    >
+      {label}
+    </button>
   );
 }

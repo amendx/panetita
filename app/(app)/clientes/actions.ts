@@ -98,9 +98,11 @@ export async function savePet(input: {
   breed?: string | null;
   restrictions?: string | null;
   notes?: string | null;
-}) {
+  photo_url?: string | null;
+}): Promise<string> {
+  let petId = input.id ?? "";
   await withUser(async ({ supabase, userId }) => {
-    const payload = {
+    const payload: Record<string, unknown> = {
       customer_id: input.customer_id,
       name: input.name,
       weight_kg: input.weight_kg ?? null,
@@ -109,15 +111,18 @@ export async function savePet(input: {
       notes: input.notes ?? null,
       user_id: userId,
     };
+    if (input.photo_url !== undefined) payload.photo_url = input.photo_url;
     if (input.id) {
       const { error } = await supabase.from("pets").update(payload).eq("id", input.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("pets").insert(payload);
+      const { data, error } = await supabase.from("pets").insert(payload).select("id").single();
       if (error) throw error;
+      petId = data!.id as string;
     }
   });
   revalidatePath(`/clientes/${input.customer_id}`);
+  return petId;
 }
 
 export async function deletePet(input: { id: string; customer_id: string }) {

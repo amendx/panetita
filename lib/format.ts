@@ -48,12 +48,27 @@ export function formatPhone(phone: string | null | undefined): string {
     digits = digits.slice(2);
   }
   if (digits.length === 11) {
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7)}`;
   }
   if (digits.length === 10) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   }
   return phone;
+}
+
+/**
+ * Máscara progressiva para input de WhatsApp:
+ * formato alvo (XX) X XXXX-XXXX (11 dígitos). Aceita até 11 dígitos.
+ */
+export function maskWhatsappInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length === 3) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 7) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 3)} ${digits.slice(3, 7)}-${digits.slice(7)}`;
 }
 
 export function unitLabel(unit: string): string {
@@ -105,7 +120,7 @@ export function pricingStrategyLabel(s: string): string {
 
 export function deliveryTypeLabel(t: string): string {
   const map: Record<string, string> = {
-    uber_99: "Uber/99 (cliente paga)",
+    uber_99: "Uber/99",
     pickup: "Retirada na loja",
   };
   return map[t] ?? t;

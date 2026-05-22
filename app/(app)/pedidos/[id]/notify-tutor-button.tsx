@@ -3,7 +3,7 @@
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { whatsappUrl } from "@/lib/whatsapp";
+import { openWhatsapp, normalizeBrPhone } from "@/lib/whatsapp";
 import { formatBRL, formatDate, deliveryTypeLabel } from "@/lib/format";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   tutorPhone: string | null;
   petName: string | null;
   orderTotal: number;
+  amountDue: number;
   itemLines: string[];
   nextDeliveryDate: string | null;
   nextDeliveryTime: string | null;
@@ -23,6 +24,7 @@ export function NotifyTutorButton({
   tutorPhone,
   petName,
   orderTotal,
+  amountDue,
   itemLines,
   nextDeliveryDate,
   nextDeliveryTime,
@@ -30,11 +32,18 @@ export function NotifyTutorButton({
   addressSummary,
 }: Props) {
   const { toast } = useToast();
+  const isPaid = amountDue <= 0 && orderTotal > 0;
 
   function buildMessage(): string {
     const lines: string[] = [];
     lines.push(`Oi ${tutorName.split(" ")[0]}! 🐶`);
-    if (petName) {
+    if (isPaid) {
+      lines.push(
+        petName
+          ? `O pedido do(a) ${petName} está pago e prontinho pra entrega! 🎉`
+          : "Seu pedido está pago e prontinho pra entrega! 🎉"
+      );
+    } else if (petName) {
       lines.push(`A panelinha do(a) ${petName} está pronta!`);
     } else {
       lines.push("Sua panelinha está pronta!");
@@ -46,21 +55,27 @@ export function NotifyTutorButton({
     if (nextDeliveryDate) {
       lines.push("");
       const dt = formatDate(nextDeliveryDate);
-      const time = nextDeliveryTime ? ` às ${nextDeliveryTime.slice(0, 5)}` : "";
-      lines.push(`📅 *Entrega:* ${dt}${time}`);
+      lines.push(`📅 *Entrega:* ${dt}`);
       if (nextDeliveryType) {
         lines.push(`🚚 *Modo:* ${deliveryTypeLabel(nextDeliveryType)}`);
       }
       if (nextDeliveryType === "uber_99" && addressSummary) {
         lines.push(`📍 Endereço: ${addressSummary}`);
       } else if (nextDeliveryType === "pickup") {
-        lines.push("📍 Retirada na loja — combinaremos o melhor horário!");
+        lines.push("📍 Retirada na loja");
+      }
+      if (nextDeliveryTime) {
+        const hhmm = nextDeliveryTime.slice(0, 5);
+        lines.push(`⏰ Podemos confirmar a entrega às ${hhmm}?`);
+      } else {
+        lines.push("⏰ Podemos combinar um horário?");
       }
     }
 
-    if (orderTotal > 0) {
+    if (!isPaid && amountDue > 0) {
       lines.push("");
-      lines.push(`💰 *Total:* ${formatBRL(orderTotal)}`);
+      lines.push(`💰 *Total:* ${formatBRL(amountDue)}`);
+      lines.push("Pode pagar via *PIX* — me chama por aqui que te passo a chave 🩷");
     }
 
     lines.push("");
@@ -78,8 +93,7 @@ export function NotifyTutorButton({
       });
       return;
     }
-    const url = whatsappUrl(tutorPhone, buildMessage());
-    if (!url) {
+    if (!normalizeBrPhone(tutorPhone)) {
       toast({
         title: "Número inválido",
         description: "Confira o WhatsApp do tutor.",
@@ -87,7 +101,7 @@ export function NotifyTutorButton({
       });
       return;
     }
-    window.open(url, "_blank", "noopener,noreferrer");
+    openWhatsapp(tutorPhone, buildMessage());
   }
 
   return (

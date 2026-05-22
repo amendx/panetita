@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { addDays, addWeeks, addMonths } from "date-fns";
 import { Loader2, Plus, Trash2, Receipt, Wallet, TrendingUp, Percent, Truck, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { formatBRL, recurrenceLabel, toISODate } from "@/lib/format";
+import { isRedirectError } from "@/lib/is-redirect-error";
 import { cn } from "@/lib/utils";
 import {
   comboCost,
@@ -62,7 +64,7 @@ interface SizeOption {
   fixed_price: number | null;
   fixed_price_monthly: number | null;
   recipe_id: string;
-  recipes: { name: string };
+  recipes: { name: string; pet_id?: string | null; pets?: { id: string; name: string } | null };
   recipe_size_ingredients: IngredientLine[];
 }
 
@@ -496,6 +498,7 @@ export function OrderWizard({
     try {
       await createOrder(payload);
     } catch (e) {
+      if (isRedirectError(e)) throw e;
       toast({
         title: "Erro ao salvar pedido",
         description: e instanceof Error ? e.message : String(e),
@@ -719,6 +722,30 @@ export function OrderWizard({
                       )
                       .join(" + ")
                   : null;
+                // Pets sob medida cujos pets não batem com o pet do pedido
+                const customPetMismatches: Array<{ recipeName: string; petName: string }> = [];
+                if (it.kind === "size") {
+                  const s = data.sizes.find((x) => x.id === it.refId);
+                  const recPetId = s?.recipes?.pet_id ?? null;
+                  const recPetName = s?.recipes?.pets?.name ?? null;
+                  if (recPetId && petId && recPetId !== petId && recPetName) {
+                    customPetMismatches.push({
+                      recipeName: s!.recipes.name,
+                      petName: recPetName,
+                    });
+                  }
+                } else if (combo) {
+                  for (const ci of combo.combo_items) {
+                    const recPetId = ci.recipe_sizes?.recipes?.pet_id ?? null;
+                    const recPetName = ci.recipe_sizes?.recipes?.pets?.name ?? null;
+                    if (recPetId && petId && recPetId !== petId && recPetName) {
+                      customPetMismatches.push({
+                        recipeName: ci.recipe_sizes.recipes.name,
+                        petName: recPetName,
+                      });
+                    }
+                  }
+                }
                 return (
                   <div key={it.key} className="rounded-md border p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -732,6 +759,16 @@ export function OrderWizard({
                         <Badge variant="outline" className="mt-1">
                           {it.kind === "size" ? "Receita" : "Combo"}
                         </Badge>
+                        {customPetMismatches.length > 0 && (
+                          <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
+                            🎯{" "}
+                            {customPetMismatches.length === 1
+                              ? `"${customPetMismatches[0].recipeName}" foi feita sob medida pra ${customPetMismatches[0].petName}.`
+                              : `Esta receita contém itens sob medida: ${customPetMismatches
+                                  .map((m) => `${m.recipeName} (${m.petName})`)
+                                  .join(", ")}.`}
+                          </div>
+                        )}
                       </div>
                       <Button variant="ghost" size="icon" onClick={() => removeItem(it.key)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -1175,10 +1212,15 @@ export function OrderWizard({
           const canSubmit = missing.length === 0 && !submitting;
           return (
             <>
-              <Button size="lg" onClick={handleSubmit} disabled={!canSubmit}>
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? "Salvando..." : "Criar pedido"}
-              </Button>
+              <div className="flex gap-2">
+                <Button asChild type="button" variant="outline" size="lg" disabled={submitting}>
+                  <Link href="/pedidos">Cancelar</Link>
+                </Button>
+                <Button size="lg" onClick={handleSubmit} disabled={!canSubmit}>
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {submitting ? "Salvando..." : "Criar pedido"}
+                </Button>
+              </div>
               {missing.length > 0 && (
                 <span className="text-xs text-muted-foreground">
                   Faltando: {missing.join(", ")}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MessageCircle, PawPrint, Plus, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
@@ -14,7 +15,7 @@ export default async function ClientesPage() {
   const { data } = await supabase
     .from("customers")
     .select(
-      "id, name, phone, source, pets(id, name, weight_kg, restrictions)"
+      "id, name, phone, source, pets(id, name, weight_kg, restrictions, photo_url)"
     )
     .order("name");
 
@@ -50,17 +51,31 @@ export default async function ClientesPage() {
               name: string;
               weight_kg: number | null;
               restrictions: string | null;
+              photo_url: string | null;
             }>;
             const hasRestriction = pets.some((p) => p.restrictions);
+            // Se o tutor só tem 1 pet com foto, usa essa foto como avatar.
+            const tutorAvatar = pets.length === 1 && pets[0].photo_url ? pets[0] : null;
             return (
               <Link key={c.id} href={`/clientes/${c.id}`} className="block">
                 <Card className="h-full transition-all hover:border-primary/40 hover:shadow-md">
                   <CardContent className="space-y-3 p-4">
                     {/* Tutor */}
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <User className="h-5 w-5" />
-                      </div>
+                      {tutorAvatar ? (
+                        <Image
+                          src={tutorAvatar.photo_url!}
+                          alt={tutorAvatar.name}
+                          width={40}
+                          height={40}
+                          unoptimized
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <User className="h-5 w-5" />
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           Tutor

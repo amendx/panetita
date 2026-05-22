@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { isRedirectError } from "@/lib/is-redirect-error";
+import { maskWhatsappInput } from "@/lib/format";
 import { createCustomer } from "../actions";
 
 export function NewCustomerForm() {
@@ -53,6 +56,7 @@ export function NewCustomerForm() {
           : null,
       });
     } catch (e) {
+      if (isRedirectError(e)) throw e;
       toast({
         title: "Erro ao criar cliente",
         description: e instanceof Error ? e.message : String(e),
@@ -86,8 +90,9 @@ export function NewCustomerForm() {
                 id="whatsapp"
                 inputMode="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="(11) 99999-9999"
+                onChange={(e) => setWhatsapp(maskWhatsappInput(e.target.value))}
+                placeholder="(11) 9 9999-9999"
+                maxLength={16}
               />
             </div>
             <div className="space-y-1.5">
@@ -172,10 +177,15 @@ export function NewCustomerForm() {
       </Card>
 
       <div className="flex flex-col items-end gap-1">
-        <Button type="submit" disabled={submitting || !name.trim()} size="lg">
-          {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {submitting ? "Criando..." : "Criar cliente"}
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild type="button" variant="outline" size="lg" disabled={submitting}>
+            <Link href="/clientes">Cancelar</Link>
+          </Button>
+          <Button type="submit" disabled={submitting || !name.trim()} size="lg">
+            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {submitting ? "Criando..." : "Criar cliente"}
+          </Button>
+        </div>
         {!name.trim() && (
           <span className="text-xs text-muted-foreground">Informe o nome do cliente</span>
         )}

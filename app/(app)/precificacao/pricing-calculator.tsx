@@ -7,15 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   fullPricing,
+  ingredientLineCost,
+  lossFactor,
   pctFromCostPrice,
   priceFromCostPct,
   profitModeLabel,
   recipeSizeCost,
 } from "@/lib/pricing";
 import { formatBRL, unitLabel } from "@/lib/format";
-import type { BusinessSettings, ProfitCalcMode } from "@/types/database";
+import type { BusinessSettings, IngredientUnit, ProfitCalcMode } from "@/types/database";
 
 interface SizeRow {
   id: string;
@@ -145,23 +148,85 @@ export function PricingCalculator({
               <ul className="space-y-1 text-sm">
                 {selected.recipe_size_ingredients.map((r) => {
                   const ing = r.ingredients;
-                  const qtyInIngUnit =
-                    r.unit === ing.unit
-                      ? r.quantity
-                      : (() => {
-                          if (r.unit === "kg" && ing.unit === "g") return r.quantity * 1000;
-                          if (r.unit === "g" && ing.unit === "kg") return r.quantity / 1000;
-                          if (r.unit === "l" && ing.unit === "ml") return r.quantity * 1000;
-                          if (r.unit === "ml" && ing.unit === "l") return r.quantity / 1000;
-                          return r.quantity;
-                        })();
-                  const c = qtyInIngUnit * ing.price_per_unit;
+                  const ingredientForCost = {
+                    id: ing.id,
+                    user_id: "",
+                    name: ing.name,
+                    unit: ing.unit as IngredientUnit,
+                    price_per_unit: ing.price_per_unit,
+                    loss_pct: Number(ing.loss_pct ?? 0),
+                    stock_quantity: 0,
+                    notes: null,
+                    created_at: "",
+                  };
+                  const adjustedCost = ingredientLineCost(
+                    ingredientForCost,
+                    r.quantity,
+                    r.unit as IngredientUnit
+                  );
+                  const factor = lossFactor(ingredientForCost);
+                  const baseCost = factor !== 0 ? adjustedCost / factor : adjustedCost;
+                  const loss = Number(ing.loss_pct ?? 0);
+                  const lossAbs = Math.abs(loss);
+                  const lossPctStr = lossAbs.toFixed(lossAbs % 1 === 0 ? 0 : 1);
                   return (
-                    <li key={r.id} className="flex justify-between">
-                      <span>
-                        {ing.name} — {r.quantity} {unitLabel(r.unit)}
+                    <li key={r.id} className="flex justify-between gap-2">
+                      <span className="flex items-center gap-1.5">
+                        <span>
+                          {ing.name} — {r.quantity} {unitLabel(r.unit as IngredientUnit)}
+                        </span>
+                        {loss > 0 && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex cursor-help items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
+                              >
+                                📉 Perda
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 text-xs">
+                              <div className="mb-1 font-medium text-amber-900">
+                                Perde {lossPctStr}% no preparo
+                              </div>
+                              <p className="text-muted-foreground">
+                                Como rende menos depois de pronto, o custo de{" "}
+                                <strong>
+                                  {r.quantity} {unitLabel(r.unit as IngredientUnit)}
+                                </strong>{" "}
+                                sobe de <strong>{formatBRL(baseCost)}</strong> para{" "}
+                                <strong>{formatBRL(adjustedCost)}</strong>.
+                              </p>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                        {loss < 0 && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex cursor-help items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900 hover:bg-emerald-200"
+                              >
+                                📈 Ganho
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 text-xs">
+                              <div className="mb-1 font-medium text-emerald-900">
+                                Rende {lossPctStr}% no preparo
+                              </div>
+                              <p className="text-muted-foreground">
+                                Como rende mais depois de pronto, o custo de{" "}
+                                <strong>
+                                  {r.quantity} {unitLabel(r.unit as IngredientUnit)}
+                                </strong>{" "}
+                                cai de <strong>{formatBRL(baseCost)}</strong> para{" "}
+                                <strong>{formatBRL(adjustedCost)}</strong>.
+                              </p>
+                            </PopoverContent>
+                          </Popover>
+                        )}
                       </span>
-                      <span className="tabular-nums">{formatBRL(c)}</span>
+                      <span className="tabular-nums">{formatBRL(adjustedCost)}</span>
                     </li>
                   );
                 })}

@@ -5,12 +5,21 @@ import { redirect } from "next/navigation";
 import { withUser } from "@/lib/auth-action";
 import type { IngredientUnit } from "@/types/database";
 
-export async function createRecipe(input: { name: string; description?: string }) {
+export async function createRecipe(input: {
+  name: string;
+  description?: string;
+  pet_id?: string | null;
+}) {
   let newId = "";
   await withUser(async ({ supabase, userId }) => {
     const { data, error } = await supabase
       .from("recipes")
-      .insert({ name: input.name, description: input.description ?? null, user_id: userId })
+      .insert({
+        name: input.name,
+        description: input.description ?? null,
+        pet_id: input.pet_id ?? null,
+        user_id: userId,
+      })
       .select("id")
       .single();
     if (error) throw error;
@@ -20,11 +29,18 @@ export async function createRecipe(input: { name: string; description?: string }
   redirect(`/receitas/${newId}`);
 }
 
-export async function updateRecipe(id: string, input: { name: string; description?: string | null }) {
+export async function updateRecipe(
+  id: string,
+  input: { name: string; description?: string | null; pet_id?: string | null }
+) {
   await withUser(async ({ supabase }) => {
     const { error } = await supabase
       .from("recipes")
-      .update({ name: input.name, description: input.description ?? null })
+      .update({
+        name: input.name,
+        description: input.description ?? null,
+        pet_id: input.pet_id ?? null,
+      })
       .eq("id", id);
     if (error) throw error;
   });

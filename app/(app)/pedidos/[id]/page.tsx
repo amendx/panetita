@@ -18,6 +18,7 @@ import {
   deliveryTypeShort,
   formatBRL,
   formatDate,
+  formatDateTime,
   paymentMethodLabel,
   pricingStrategyLabel,
   recurrenceLabel,
@@ -49,7 +50,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
         recipe_sizes(id, size_label, recipes(name)),
         combos(id, name, combo_items(quantity, recipe_sizes(size_label, recipes(name))))
       ),
-      deliveries(id, scheduled_date, scheduled_time, status, delivery_type, notes, delivery_items(id, order_item_id, quantity)),
+      deliveries(id, scheduled_date, scheduled_time, status, delivery_type, notes, delivered_at, delivery_items(id, order_item_id, quantity)),
       payments(id, amount, method, due_date, paid_at, status, notes)
     `
     )
@@ -78,6 +79,10 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
     return `• ${it.quantity}× ${label}`;
   });
   const firstScheduled = deliveries[0];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const amountDue = payments.reduce((acc: number, p: any) => {
+    return p.status === "paid" ? acc : acc + Number(p.amount ?? 0);
+  }, 0);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -96,6 +101,7 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
               tutorPhone={customer?.phone ?? null}
               petName={pet?.name ?? null}
               orderTotal={Number(o.total_price)}
+              amountDue={amountDue}
               itemLines={itemsForMessage}
               nextDeliveryDate={firstScheduled?.scheduled_date ?? null}
               nextDeliveryTime={firstScheduled?.scheduled_time ?? null}
@@ -269,6 +275,11 @@ export default async function PedidoDetailPage({ params }: { params: Promise<{ i
                       <Badge variant={d.status === "delivered" ? "success" : "secondary"}>
                         {statusLabel(d.status)}
                       </Badge>
+                      {d.status === "delivered" && d.delivered_at && (
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          Entregue em {formatDateTime(d.delivered_at)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <DeliveryRowActions

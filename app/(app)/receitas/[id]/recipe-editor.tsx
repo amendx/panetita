@@ -25,10 +25,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
+import { isRedirectError } from "@/lib/is-redirect-error";
 import { formatBRL, unitLabel } from "@/lib/format";
 import {
   ingredientLineCost,
+  lossFactor,
   pctFromCostPrice,
   priceFromCostPct,
   profitModeLabel,
@@ -61,16 +64,26 @@ type SizeRow = RecipeSize & {
   }>;
 };
 
+export interface PetOption {
+  id: string;
+  name: string;
+  customer_name: string | null;
+}
+
+const PET_NONE = "__none";
+
 export function RecipeEditor({
   recipe,
   sizes,
   ingredients,
+  pets,
   startInEditMode = false,
   profitMode,
 }: {
   recipe: Recipe;
   sizes: SizeRow[];
   ingredients: Ingredient[];
+  pets: PetOption[];
   startInEditMode?: boolean;
   profitMode: ProfitCalcMode;
 }) {
@@ -78,6 +91,8 @@ export function RecipeEditor({
   const [editingRecipe, setEditingRecipe] = useState(startInEditMode);
   const [name, setName] = useState(recipe.name);
   const [description, setDescription] = useState(recipe.description ?? "");
+  const [petId, setPetId] = useState<string>(recipe.pet_id ?? PET_NONE);
+  const linkedPet = pets.find((p) => p.id === recipe.pet_id);
 
   const [addingSize, setAddingSize] = useState(false);
   const [newSizeLabel, setNewSizeLabel] = useState("");
@@ -90,7 +105,11 @@ export function RecipeEditor({
   async function handleSaveRecipe() {
     setSavingRecipe(true);
     try {
-      await updateRecipe(recipe.id, { name, description: description || null });
+      await updateRecipe(recipe.id, {
+        name,
+        description: description || null,
+        pet_id: petId === PET_NONE ? null : petId,
+      });
       toast({ title: "Receita atualizada" });
       setEditingRecipe(false);
     } catch (e) {
@@ -106,6 +125,7 @@ export function RecipeEditor({
       await deleteRecipe(recipe.id);
       toast({ title: "Receita excluída" });
     } catch (e) {
+      if (isRedirectError(e)) throw e;
       toast({
         title: "Erro ao excluir receita",
         description: e instanceof Error ? e.message : String(e),
@@ -153,6 +173,12 @@ export function RecipeEditor({
         <CardHeader className="flex flex-row items-start justify-between">
           <div className="space-y-1">
             <CardTitle className="text-base">Detalhes da receita</CardTitle>
+            {linkedPet && !editingRecipe && (
+              <div className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-900">
+                🎯 Sob medida pra {linkedPet.name}
+                {linkedPet.customer_name ? ` (${linkedPet.customer_name})` : ""}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => setEditingRecipe((v) => !v)}>
@@ -173,6 +199,26 @@ export function RecipeEditor({
               <div>
                 <Label>Descrição</Label>
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div>
+                <Label>Pet (opcional)</Label>
+                <Select value={petId} onValueChange={setPetId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Receita genérica" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PET_NONE}>Receita genérica (qualquer pet)</SelectItem>
+                    {pets.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        🎯 {p.name}
+                        {p.customer_name ? ` — ${p.customer_name}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Receita sob medida fica marcada com um aviso quando usada em pedido de outro pet.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditingRecipe(false)}>
@@ -297,6 +343,7 @@ function SizeCard({
   const [ingredientId, setIngredientId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState<IngredientUnit>("g");
+  const [ingredientSearch, setIngredientSearch] = useState("");
   const [adding, setAdding] = useState(false);
   const [savingSize, setSavingSize] = useState(false);
 
@@ -499,25 +546,60 @@ function SizeCard({
               <TableBody>
                 {size.recipe_size_ingredients.map((row) => {
                   const loss = Number(row.ingredients.loss_pct ?? 0);
+                  const adjustedCost = ingredientLineCost(row.ingredients, row.quantity, row.unit);
+                  const factor = lossFactor(row.ingredients);
+                  const baseCost = factor !== 0 ? adjustedCost / factor : adjustedCost;
+                  const lossAbs = Math.abs(loss);
+                  const lossPctStr = lossAbs.toFixed(lossAbs % 1 === 0 ? 0 : 1);
                   return (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">
                       {row.ingredients.name}
                       {loss > 0 && (
-                        <span
-                          className="ml-1.5 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900"
-                          title={`Perde ${loss.toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
-                        >
-                          📉 Perda
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-1.5 inline-flex cursor-help items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
+                            >
+                              📉 Perda
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 text-xs">
+                            <div className="mb-1 font-medium text-amber-900">
+                              Perde {lossPctStr}% no preparo
+                            </div>
+                            <p className="text-muted-foreground">
+                              Como rende menos depois de pronto, o custo de{" "}
+                              <strong>{row.quantity} {unitLabel(row.unit)}</strong> sobe de{" "}
+                              <strong>{formatBRL(baseCost)}</strong> para{" "}
+                              <strong>{formatBRL(adjustedCost)}</strong>.
+                            </p>
+                          </PopoverContent>
+                        </Popover>
                       )}
                       {loss < 0 && (
-                        <span
-                          className="ml-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900"
-                          title={`Rende ${Math.abs(loss).toFixed(loss % 1 === 0 ? 0 : 1)}% no preparo`}
-                        >
-                          📈 Ganho
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-1.5 inline-flex cursor-help items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-900 hover:bg-emerald-200"
+                            >
+                              📈 Ganho
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 text-xs">
+                            <div className="mb-1 font-medium text-emerald-900">
+                              Rende {lossPctStr}% no preparo
+                            </div>
+                            <p className="text-muted-foreground">
+                              Como rende mais depois de pronto, o custo de{" "}
+                              <strong>{row.quantity} {unitLabel(row.unit)}</strong> cai de{" "}
+                              <strong>{formatBRL(baseCost)}</strong> para{" "}
+                              <strong>{formatBRL(adjustedCost)}</strong>.
+                            </p>
+                          </PopoverContent>
+                        </Popover>
                       )}
                     </TableCell>
                     <TableCell>
@@ -555,7 +637,13 @@ function SizeCard({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_120px_100px_auto] sm:items-end">
             <div>
               <Label className="text-xs">Ingrediente</Label>
-              <Select value={ingredientId} onValueChange={setIngredientId}>
+              <Select
+                value={ingredientId}
+                onValueChange={setIngredientId}
+                onOpenChange={(o) => {
+                  if (!o) setIngredientSearch("");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -565,11 +653,36 @@ function SizeCard({
                       Cadastre ingredientes primeiro
                     </SelectItem>
                   ) : (
-                    ingredients.map((i) => (
-                      <SelectItem key={i.id} value={i.id}>
-                        {i.name} — {formatBRL(Number(i.price_per_unit))}/{unitLabel(i.unit)}
-                      </SelectItem>
-                    ))
+                    <>
+                      <div className="sticky top-0 z-10 -mx-1 -mt-1 mb-1 border-b bg-popover p-1.5">
+                        <Input
+                          autoFocus
+                          value={ingredientSearch}
+                          onChange={(e) => setIngredientSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder="Buscar ingrediente..."
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      {(() => {
+                        const q = ingredientSearch.trim().toLowerCase();
+                        const filtered = q
+                          ? ingredients.filter((i) => i.name.toLowerCase().includes(q))
+                          : ingredients;
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                              Nenhum ingrediente encontrado
+                            </div>
+                          );
+                        }
+                        return filtered.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>
+                            {i.name} — {formatBRL(Number(i.price_per_unit))}/{unitLabel(i.unit)}
+                          </SelectItem>
+                        ));
+                      })()}
+                    </>
                   )}
                 </SelectContent>
               </Select>

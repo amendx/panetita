@@ -615,7 +615,7 @@ A panelinha do(a) Apolo está pronta!
 • 15× Frango · Pequeno II
 
 📅 *Entrega:* 22/10/2025 às 14:00
-🚚 *Modo:* Uber/99 (cliente paga)
+🚚 *Modo:* Uber/99 
 📍 Endereço: Rua das Flores, 123
 
 💰 *Total:* R$ 525,00

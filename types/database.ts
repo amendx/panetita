@@ -44,6 +44,8 @@ export interface Recipe {
   name: string;
   description: string | null;
   photo_url: string | null;
+  /** Pet alvo de receita "sob medida". null = receita genérica. */
+  pet_id: string | null;
   created_at: string;
 }
 

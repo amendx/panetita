@@ -2,8 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Plus, Trash2, MapPin, PawPrint, Receipt, Loader2, MessageCircle } from "lucide-react";
-import { whatsappUrl } from "@/lib/whatsapp";
+import {
+  Pencil,
+  Plus,
+  Trash2,
+  MapPin,
+  PawPrint,
+  Receipt,
+  Loader2,
+  MessageCircle,
+  Upload,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { openWhatsapp, whatsappUrl } from "@/lib/whatsapp";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { NavButton } from "@/components/ui/nav-button";
@@ -19,7 +31,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { formatBRL, formatDate, formatPhone, recurrenceLabel, statusLabel } from "@/lib/format";
+import { isRedirectError } from "@/lib/is-redirect-error";
+import { uploadPetPhoto, deletePetPhoto } from "@/lib/pet-photo";
+import {
+  formatBRL,
+  formatDate,
+  formatPhone,
+  maskWhatsappInput,
+  recurrenceLabel,
+  statusLabel,
+} from "@/lib/format";
 import {
   deleteAddress,
   deleteCustomer,
@@ -86,6 +107,7 @@ export function CustomerEditor({
     try {
       await deleteCustomer(customer.id);
     } catch (e) {
+      if (isRedirectError(e)) throw e;
       toast({ title: "Erro", description: String(e), variant: "destructive" });
     }
   }
@@ -117,7 +139,9 @@ export function CustomerEditor({
                   <Input
                     inputMode="tel"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    onChange={(e) => setWhatsapp(maskWhatsappInput(e.target.value))}
+                    placeholder="(11) 9 9999-9999"
+                    maxLength={16}
                   />
                 </div>
                 <div>
@@ -146,6 +170,10 @@ export function CustomerEditor({
                   href={whatsappUrl(customer.phone) ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openWhatsapp(customer.phone);
+                  }}
                   className="inline-flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
                 >
                   <MessageCircle className="h-4 w-4" />
@@ -194,9 +222,20 @@ export function CustomerEditor({
             <Card key={p.id}>
               <CardContent className="flex items-start justify-between gap-3 p-4">
                 <div className="flex items-start gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl">
-                    🐾
-                  </div>
+                  {p.photo_url ? (
+                    <Image
+                      src={p.photo_url}
+                      alt={p.name}
+                      width={48}
+                      height={48}
+                      unoptimized
+                      className="h-12 w-12 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xl">
+                      🐾
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <div className="font-semibold">{p.name}</div>
                     <div className="mt-0.5 text-sm text-muted-foreground">
@@ -407,7 +446,10 @@ function PetDialog({
   const [breed, setBreed] = useState(pet?.breed ?? "");
   const [restrictions, setRestrictions] = useState(pet?.restrictions ?? "");
   const [notes, setNotes] = useState(pet?.notes ?? "");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(pet?.photo_url ?? null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // sync when opening
   if (open && pet && name !== pet.name && name === "") {
@@ -416,7 +458,11 @@ function PetDialog({
     setBreed(pet.breed ?? "");
     setRestrictions(pet.restrictions ?? "");
     setNotes(pet.notes ?? "");
+    setPhotoUrl(pet.photo_url ?? null);
+    setPendingFile(null);
   }
+
+  const previewUrl = pendingFile ? URL.createObjectURL(pendingFile) : photoUrl;
 
   async function handle() {
     if (!name.trim()) {
@@ -425,7 +471,8 @@ function PetDialog({
     }
     setSaving(true);
     try {
-      await savePet({
+      // 1. salva os campos do pet (cria/atualiza). Para novo pet, precisamos do id antes do upload.
+      const savedId = await savePet({
         id: pet?.id,
         customer_id: customerId,
         name,
@@ -433,7 +480,36 @@ function PetDialog({
         breed: breed || null,
         restrictions: restrictions || null,
         notes: notes || null,
+        // se o usuário removeu a foto, manda null. Se selecionou uma nova,
+        // ainda não sabemos a URL — deixa o photo_url atual e atualiza depois.
+        photo_url: photoUrl,
       });
+      // 2. upload da nova foto (se houver) e segundo save com a URL
+      if (pendingFile) {
+        setUploading(true);
+        try {
+          const url = await uploadPetPhoto(savedId, pendingFile);
+          await savePet({
+            id: savedId,
+            customer_id: customerId,
+            name,
+            weight_kg: weight ? parseFloat(weight.replace(",", ".")) : null,
+            breed: breed || null,
+            restrictions: restrictions || null,
+            notes: notes || null,
+            photo_url: url,
+          });
+          // remove foto anterior do storage (se a substituiu)
+          if (pet?.photo_url) {
+            await deletePetPhoto(pet.photo_url).catch(() => {});
+          }
+        } finally {
+          setUploading(false);
+        }
+      } else if (pet?.photo_url && !photoUrl) {
+        // usuário removeu sem substituir — limpa o arquivo antigo
+        await deletePetPhoto(pet.photo_url).catch(() => {});
+      }
       toast({ title: pet ? "Pet atualizado" : "Pet criado" });
       onOpenChange(false);
     } catch (e) {
@@ -458,12 +534,16 @@ function PetDialog({
           setBreed("");
           setRestrictions("");
           setNotes("");
+          setPhotoUrl(null);
+          setPendingFile(null);
         } else if (pet) {
           setName(pet.name);
           setWeight(pet.weight_kg != null ? String(pet.weight_kg) : "");
           setBreed(pet.breed ?? "");
           setRestrictions(pet.restrictions ?? "");
           setNotes(pet.notes ?? "");
+          setPhotoUrl(pet.photo_url ?? null);
+          setPendingFile(null);
         }
       }}
     >
@@ -472,6 +552,59 @@ function PetDialog({
           <DialogTitle>{pet ? "Editar pet" : "Novo pet"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="flex flex-col items-center gap-2">
+            <label
+              htmlFor="pet-photo-input"
+              className="group relative block cursor-pointer"
+              title={previewUrl ? "Trocar foto" : "Escolher foto"}
+            >
+              {previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt="Foto do pet"
+                  className="h-24 w-24 rounded-full object-cover ring-2 ring-border transition-all group-hover:ring-primary"
+                />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-4xl ring-2 ring-border transition-all group-hover:ring-primary">
+                  🐾
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <Upload className="h-6 w-6 text-white" />
+              </div>
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setPendingFile(null);
+                    setPhotoUrl(null);
+                  }}
+                  className="absolute -right-1 -top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow ring-2 ring-background hover:bg-destructive/90"
+                  aria-label="Remover foto"
+                  title="Remover foto"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </label>
+            <input
+              id="pet-photo-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                setPendingFile(f);
+                e.target.value = "";
+              }}
+            />
+            <p className="text-center text-xs text-muted-foreground">
+              {previewUrl ? "Clique pra trocar a foto" : "Clique pra adicionar foto"}
+            </p>
+          </div>
           <div>
             <Label>Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
@@ -515,7 +648,7 @@ function PetDialog({
           </Button>
           <Button onClick={handle} disabled={saving || !name.trim()}>
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? "Salvando..." : "Salvar"}
+            {uploading ? "Enviando foto..." : saving ? "Salvando..." : "Salvar"}
           </Button>
         </DialogFooter>
       </DialogContent>

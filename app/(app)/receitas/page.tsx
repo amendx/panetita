@@ -16,7 +16,8 @@ export default async function ReceitasPage() {
     supabase
       .from("recipes")
       .select(
-        `id, name, description,
+        `id, name, description, pet_id,
+       pets(id, name, customers(name)),
        recipe_sizes(
          id, size_label, fixed_price,
          recipe_size_ingredients(

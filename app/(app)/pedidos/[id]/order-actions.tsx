@@ -5,6 +5,7 @@ import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { isRedirectError } from "@/lib/is-redirect-error";
 import { deleteOrder, updateOrderStatus } from "../actions";
 import { statusLabel } from "@/lib/format";
 import type { OrderStatus } from "@/types/database";
@@ -62,6 +63,7 @@ export function OrderActions({ orderId, status }: { orderId: string; status: Ord
             await deleteOrder(orderId);
             toast({ title: "Pedido excluído" });
           } catch (e) {
+            if (isRedirectError(e)) throw e;
             toast({
               title: "Erro ao excluir pedido",
               description: e instanceof Error ? e.message : String(e),

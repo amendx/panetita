@@ -13,7 +13,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { deliveryTypeShort, formatDate, recurrenceLabel, statusLabel, toISODate } from "@/lib/format";
+import {
+  deliveryTypeShort,
+  formatDate,
+  formatDateTime,
+  recurrenceLabel,
+  statusLabel,
+  toISODate,
+} from "@/lib/format";
 import { DeliveryRowActions } from "../pedidos/[id]/delivery-row-actions";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +50,7 @@ export default async function EntregasPage({
   const { data: deliveries } = await supabase
     .from("deliveries")
     .select(
-      `id, scheduled_date, scheduled_time, status, delivery_type, notes,
+      `id, scheduled_date, scheduled_time, status, delivery_type, notes, delivered_at,
        orders(id, recurrence, customers(name), pets(name)),
        addresses(street, number),
        delivery_items(quantity, order_items(recipe_sizes(size_label, recipes(name)), combos(name)))`
@@ -141,6 +148,11 @@ export default async function EntregasPage({
                         <Badge variant={d.status === "delivered" ? "success" : "secondary"}>
                           {statusLabel(d.status)}
                         </Badge>
+                        {d.status === "delivered" && d.delivered_at && (
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            Entregue em {formatDateTime(d.delivered_at)}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DeliveryRowActions
