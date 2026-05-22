@@ -63,7 +63,7 @@ export function FixedCostsSection({ initial }: { initial: BusinessSettings }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* GASTOS FIXOS MENSAIS */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 bn">
           <CostField
             icon={<Building2 className="h-4 w-4" />}
             label="Aluguel"
@@ -189,7 +189,7 @@ function CostField({
 }) {
   return (
     <div>
-      <Label className="flex items-center gap-1.5">
+      <Label className="flex items-center gap-1.5 mb-1">
         {icon}
         {label}
       </Label>

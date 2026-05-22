@@ -165,13 +165,13 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Unidade</TableHead>
-                  <TableHead className="text-right">Preço</TableHead>
-                  <TableHead className="hidden text-right sm:table-cell">Perda</TableHead>
-                  <TableHead className="hidden text-right sm:table-cell">Estoque</TableHead>
-                  <TableHead className="hidden md:table-cell">Observações</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="h-9 py-1">Nome</TableHead>
+                  <TableHead className="h-9 py-1">Un.</TableHead>
+                  <TableHead className="h-9 py-1 text-right">Preço</TableHead>
+                  <TableHead className="hidden h-9 py-1 text-right sm:table-cell">Perda</TableHead>
+                  <TableHead className="hidden h-9 py-1 text-right sm:table-cell">Estoque</TableHead>
+                  <TableHead className="hidden h-9 py-1 text-center md:table-cell">Obs</TableHead>
+                  <TableHead className="h-9 py-1 w-[88px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,11 +180,12 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                   const noPrice = Number(i.price_per_unit ?? 0) === 0;
                   const stock = Number(i.stock_quantity ?? 0);
                   const loss = Number(i.loss_pct ?? 0);
+                  const hasNotes = !!i.notes && i.notes.trim().length > 0;
                   return (
                     <TableRow key={i.id} className={isDeleting ? "opacity-50" : ""}>
-                      <TableCell className="font-medium">{i.name}</TableCell>
-                      <TableCell>{unitLabel(i.unit)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="py-2 font-medium">{i.name}</TableCell>
+                      <TableCell className="py-2">{unitLabel(i.unit)}</TableCell>
+                      <TableCell className="py-2 text-right tabular-nums">
                         {noPrice ? (
                           <span className="text-xs text-amber-700">sem preço</span>
                         ) : (
@@ -193,7 +194,7 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                           </>
                         )}
                       </TableCell>
-                      <TableCell className="hidden text-right text-sm sm:table-cell">
+                      <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
                         {loss > 0 ? (
                           <span
                             className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900"
@@ -212,7 +213,7 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden text-right text-sm sm:table-cell">
+                      <TableCell className="hidden py-2 text-right text-sm sm:table-cell">
                         {stock > 0 ? (
                           <span className="tabular-nums">
                             {stock} {unitLabel(i.unit)}
@@ -221,30 +222,44 @@ export function IngredientList({ ingredients }: { ingredients: Ingredient[] }) {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden text-muted-foreground md:table-cell">
-                        {i.notes}
+                      <TableCell
+                        className="hidden py-2 text-center text-xs md:table-cell"
+                        title={hasNotes ? (i.notes ?? "") : undefined}
+                      >
+                        {hasNotes ? (
+                          <span className="text-emerald-700">Sim</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isDeleting}
-                          onClick={() => { setEditing(i); setOpen(true); }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={isDeleting}
-                          onClick={() => handleDelete(i.id)}
-                        >
-                          {isDeleting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          )}
-                        </Button>
+                      <TableCell className="py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={isDeleting}
+                            onClick={() => {
+                              setEditing(i);
+                              setOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={isDeleting}
+                            onClick={() => handleDelete(i.id)}
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
