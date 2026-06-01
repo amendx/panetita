@@ -674,7 +674,6 @@ export function OrderWizard({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <AddPicker
-              label="Receita"
               placeholder="Adicionar receita"
               options={data.sizes.map((s) => ({
                 value: s.id,
@@ -683,7 +682,6 @@ export function OrderWizard({
               onPick={(v) => addItem("size", v)}
             />
             <AddPicker
-              label="Combo"
               placeholder="Adicionar combo"
               options={data.combos.map((c) => {
                 const price = comboCalculatedPrice(comboAsCombo(c));
@@ -699,7 +697,9 @@ export function OrderWizard({
           </div>
 
           {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Adicione receitas e/ou combos ao pedido.</p>
+            <p className="text-sm text-muted-foreground">
+              Use os botões acima para adicionar quantas receitas e combos quiser — cada um vira uma linha independente.
+            </p>
           ) : (
             <div className="space-y-2">
               {items.map((it) => {
@@ -857,6 +857,9 @@ export function OrderWizard({
                   <span className="font-semibold">{formatBRL(profit)}</span>
                 </div>
               </div>
+              <p className="text-center text-xs text-muted-foreground">
+                💡 Quer adicionar mais alguma receita ou combo? Use os campos acima.
+              </p>
             </div>
           )}
         </CardContent>
@@ -1235,12 +1238,10 @@ export function OrderWizard({
 }
 
 function AddPicker({
-  label,
   placeholder,
   options,
   onPick,
 }: {
-  label: string;
   placeholder: string;
   options: { value: string; label: string }[];
   onPick: (v: string) => void;
@@ -1248,37 +1249,35 @@ function AddPicker({
   // Estado interno só para resetar o Select depois de adicionar.
   const [resetKey, setResetKey] = useState(0);
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="text-xs">{label}</Label>
-      <Select
-        key={resetKey}
-        value=""
-        onValueChange={(v) => {
-          if (v && v !== "__empty") {
-            onPick(v);
-            // Força remount do Select para limpar a seleção
-            setResetKey((k) => k + 1);
-          }
-        }}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.length === 0 ? (
-            <SelectItem value="__empty" disabled>
-              Nenhum disponível
+    <Select
+      key={resetKey}
+      value=""
+      onValueChange={(v) => {
+        if (v && v !== "__empty") {
+          onPick(v);
+          // Força remount do Select para limpar a seleção
+          setResetKey((k) => k + 1);
+        }
+      }}
+    >
+      <SelectTrigger className="h-10 justify-start gap-2 border-dashed text-muted-foreground hover:border-primary/60 hover:text-foreground">
+        <Plus className="h-4 w-4 shrink-0" />
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.length === 0 ? (
+          <SelectItem value="__empty" disabled>
+            Nenhum disponível
+          </SelectItem>
+        ) : (
+          options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
-          ) : (
-            options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
-    </div>
+          ))
+        )}
+      </SelectContent>
+    </Select>
   );
 }
 
