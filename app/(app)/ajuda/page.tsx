@@ -56,9 +56,9 @@ export default function AjudaPage() {
                 <Link href="/precificacao" className="text-primary underline">
                   Precificação
                 </Link>
-                , cadastre Aluguel, Energia, Marketing, MEI + sua produção mensal estimada.
-                O sistema dilui tudo por panelinha e sugere um preço que cobre todo o overhead
-                (não só os ingredientes), separando ainda 3% do lucro como reserva.
+                , cadastre Aluguel, Energia, Marketing e MEI. O sistema mostra quantas
+                unidades de cada receita você precisa vender no mês, com o markup escolhido,
+                pra cobrir esse custo (o ponto de equilíbrio).
               </span>
             </li>
             <li className="flex items-start gap-2">
@@ -468,13 +468,15 @@ export default function AjudaPage() {
 
       {/* PRECIFICACAO COMPLETA */}
       <section>
-        <SectionTitle>🏢 Precificação que cobre o negócio inteiro</SectionTitle>
+        <SectionTitle>🎯 Quantas vender pra cobrir o mês</SectionTitle>
         <Card>
           <CardContent className="p-6 space-y-3 text-sm">
             <p className="text-muted-foreground">
               Em <Link href="/precificacao" className="text-primary underline">Precificação</Link>{" "}
-              você cadastra seus custos fixos mensais. O sistema dilui isso em cada panelinha
-              para que <strong>cada venda contribua com o overhead</strong>, não só pague os ingredientes.
+              você cadastra seus custos fixos mensais. O preço de cada receita é só
+              ingredientes + markup — o custo mensal <strong>não</strong> entra no preço.
+              Ele é coberto pelo <strong>volume de vendas</strong>: o lucro de cada panelinha
+              vai se somando até pagar o mês.
             </p>
 
             <div className="rounded-md border bg-muted/40 p-3 text-xs space-y-1">
@@ -499,21 +501,19 @@ export default function AjudaPage() {
             </div>
 
             <FormulaBox>
-              Custo fixo por panelinha = Total fixo mensal ÷ panelinhas/mês estimadas<br />
-              Custo total = Ingredientes + Custo fixo por panelinha<br />
-              Preço = Custo total × markup (ou ÷ (1 − margem))<br />
-              Reserva (3%) = Lucro bruto × 0,03<br />
-              <strong>Lucro líquido = Preço − Custo total − Reserva</strong>
+              Preço = Ingredientes × markup (ou ÷ (1 − margem))<br />
+              Lucro por unidade = Preço − Ingredientes<br />
+              <strong>Unidades pra cobrir o mês = Total fixo mensal ÷ Lucro por unidade</strong>
             </FormulaBox>
 
             <p className="text-xs text-muted-foreground">
-              💡 No simulador, ligue/desligue o toggle <em>"Incluir custos fixos"</em> pra comparar
-              o preço considerando apenas ingredientes vs. tudo incluído. O preço fixo cadastrado
-              de cada tamanho também aparece com a sobra real depois de descontar o custo total.
+              💡 Exemplo: custo mensal R$ 1.870, receita de R$ 11,30 em ingredientes com 10%
+              de markup → preço R$ 12,43, lucro de R$ 1,13 por unidade. Você precisa vender
+              ~1.655 unidades no mês pra empatar. Aumente o markup e veja esse número cair.
             </p>
             <p className="text-xs text-muted-foreground">
-              🛟 <strong>Fundo de reserva</strong>: 3% do lucro fica separado pra manutenção/reposição
-              de equipamentos. Configurável.
+              🛟 O preço fixo cadastrado de cada tamanho também aparece, com quantas unidades
+              dele seriam necessárias pra cobrir o mês.
             </p>
           </CardContent>
         </Card>

@@ -47,62 +47,48 @@ export const profitModeLabel = (mode: ProfitCalcMode): string =>
   mode === "markup" ? "Markup" : "Margem";
 
 // ============================================================
-// Precificação completa (variável + custo fixo diluido + reserva)
+// Ponto de equilíbrio (margem de contribuição)
 // ============================================================
 
-export interface FullPricingInput {
-  /** Custo variável (ingredientes) por unidade */
-  variableCost: number;
-  /** Custo fixo diluído por unidade (overhead mensal / produção estimada) */
-  fixedCostPerUnit: number;
+export interface BreakEvenOutput {
+  /** Preço de venda sugerido (custo dos ingredientes + markup/margem) */
+  suggestedPrice: number;
+  /** Lucro/contribuição por unidade = preço − custo dos ingredientes */
+  contributionPerUnit: number;
+  /**
+   * Quantas unidades desta receita precisam ser vendidas no mês para que o
+   * lucro acumulado cubra o custo fixo mensal. `null` quando não dá pra cobrir
+   * (contribuição ≤ 0) ou quando não há custo mensal a cobrir.
+   */
+  unitsToBreakEven: number | null;
+}
+
+/**
+ * Calcula o ponto de equilíbrio de UMA receita: dado o custo dos ingredientes,
+ * o markup/margem desejado e o custo fixo mensal total, devolve o preço
+ * sugerido, quanto cada venda contribui (lucro por unidade) e quantas unidades
+ * precisam ser vendidas no mês pra cobrir o custo fixo.
+ *
+ * O custo mensal NÃO é diluído no preço — ele é coberto pelo VOLUME de vendas.
+ */
+export function breakEven(input: {
+  /** Custo dos ingredientes por unidade */
+  ingredientCost: number;
   /** % escolhido pelo usuário (markup ou margem) */
   pct: number;
   /** Modo de cálculo da %: markup (sobre custo) ou margin (sobre preço) */
   mode: ProfitCalcMode;
-  /** % do lucro bruto destinado ao fundo de reserva (ex.: 3) */
-  reservePct: number;
-}
-
-export interface FullPricingOutput {
-  /** Custo total por unidade (variável + fixo) */
-  totalCost: number;
-  /** Preço de venda sugerido */
-  suggestedPrice: number;
-  /** Lucro bruto = preço - custo total */
-  grossProfit: number;
-  /** Reserva = lucro bruto × reserve_pct */
-  reserveAmount: number;
-  /** Lucro líquido = lucro bruto - reserva */
-  netProfit: number;
-  /** % lucro líquido sobre o preço (real "take-home" margin) */
-  netMarginPct: number;
-}
-
-/**
- * Calcula a precificação completa de uma unidade considerando:
- *   - custo variável (ingredientes)
- *   - custo fixo diluído (overhead mensal / produção estimada)
- *   - markup/margem desejado pelo usuário
- *   - reserva (% do lucro bruto pra manutenção de equipamento)
- *
- * O preço é calculado sobre o CUSTO TOTAL (variável + fixo) para garantir
- * que os produtos cubram tudo, não apenas o custo de matéria-prima.
- */
-export function fullPricing(input: FullPricingInput): FullPricingOutput {
-  const totalCost = (input.variableCost || 0) + (input.fixedCostPerUnit || 0);
-  const suggestedPrice = priceFromCostPct(totalCost, input.pct, input.mode);
-  const grossProfit = suggestedPrice - totalCost;
-  const reserveAmount = grossProfit * ((input.reservePct || 0) / 100);
-  const netProfit = grossProfit - reserveAmount;
-  const netMarginPct = suggestedPrice > 0 ? (netProfit / suggestedPrice) * 100 : 0;
-  return {
-    totalCost,
-    suggestedPrice,
-    grossProfit,
-    reserveAmount,
-    netProfit,
-    netMarginPct,
-  };
+  /** Custo fixo mensal total do negócio (aluguel + energia + ...) */
+  monthlyFixedCost: number;
+}): BreakEvenOutput {
+  const suggestedPrice = priceFromCostPct(input.ingredientCost, input.pct, input.mode);
+  const contributionPerUnit = suggestedPrice - input.ingredientCost;
+  const monthly = Math.max(0, input.monthlyFixedCost || 0);
+  const unitsToBreakEven =
+    contributionPerUnit > 0 && monthly > 0
+      ? Math.ceil(monthly / contributionPerUnit)
+      : null;
+  return { suggestedPrice, contributionPerUnit, unitsToBreakEven };
 }
 
 /**

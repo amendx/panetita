@@ -37,7 +37,7 @@ export const getBusinessSettings = cache(async (): Promise<BusinessSettings> => 
   };
 });
 
-/** Total fixo mensal (sem reserva, que é % do lucro). */
+/** Total fixo mensal do negócio (aluguel + energia + marketing + MEI). */
 export function totalMonthlyFixedCost(settings: BusinessSettings): number {
   return (
     Number(settings.monthly_rent) +
@@ -45,11 +45,4 @@ export function totalMonthlyFixedCost(settings: BusinessSettings): number {
     Number(settings.monthly_marketing) +
     Number(settings.monthly_mei)
   );
-}
-
-/** Custo fixo diluído por unidade, dado a estimativa de produção mensal. */
-export function fixedCostPerUnit(settings: BusinessSettings): number {
-  const n = Math.max(1, Number(settings.estimated_units_per_month) || 0);
-  if (n <= 0) return 0;
-  return totalMonthlyFixedCost(settings) / n;
 }

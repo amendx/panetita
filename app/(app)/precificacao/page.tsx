@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/layout/page-header";
 import { getProfitCalcMode } from "@/lib/user-settings";
-import { fixedCostPerUnit, getBusinessSettings } from "@/lib/business-settings";
+import { getBusinessSettings, totalMonthlyFixedCost } from "@/lib/business-settings";
 import { ProfitModeSection } from "./profit-mode-section";
 import { FixedCostsSection } from "./fixed-costs-section";
 import { PricingCalculator } from "./pricing-calculator";
@@ -21,21 +21,20 @@ export default async function PrecificacaoPage() {
     getBusinessSettings(),
   ]);
 
-  const overhead = fixedCostPerUnit(businessSettings);
+  const monthlyFixedCost = totalMonthlyFixedCost(businessSettings);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Precificação"
-        description="Configure o modo de cálculo, registre seus custos fixos e simule preços que cobrem tudo (não só os ingredientes)."
+        description="Registre seu custo mensal, escolha o markup de cada receita e veja quantas você precisa vender pra cobrir o mês."
       />
       <ProfitModeSection initialMode={mode} />
       <FixedCostsSection initial={businessSettings} />
       <PricingCalculator
         sizes={(sizes ?? []) as never[]}
         profitMode={mode}
-        businessSettings={businessSettings}
-        fixedCostPerUnit={overhead}
+        monthlyFixedCost={monthlyFixedCost}
       />
     </div>
   );

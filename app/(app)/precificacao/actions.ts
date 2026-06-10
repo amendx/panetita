@@ -26,8 +26,6 @@ export async function saveBusinessSettings(input: {
   monthly_energy: number;
   monthly_marketing: number;
   monthly_mei: number;
-  reserve_pct: number;
-  estimated_units_per_month: number;
 }) {
   await withUser(async ({ supabase }) => {
     // Singleton: pega a unica linha ou cria uma nova
@@ -42,8 +40,6 @@ export async function saveBusinessSettings(input: {
       monthly_energy: input.monthly_energy,
       monthly_marketing: input.monthly_marketing,
       monthly_mei: input.monthly_mei,
-      reserve_pct: input.reserve_pct,
-      estimated_units_per_month: input.estimated_units_per_month,
       updated_at: new Date().toISOString(),
     };
 
